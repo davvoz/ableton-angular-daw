@@ -44,18 +44,33 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
   private audioEngine = inject(AudioEngineService);
   private instrumentFactory = inject(InstrumentFactoryService);
   private trackFactory = inject(TrackFactoryService);
-  private cdr = inject(ChangeDetectorRef);
-
-  // State signals
+  private cdr = inject(ChangeDetectorRef);  // State signals
   private _zoomLevel = signal<number>(1.0);
   private _scrollX = signal<number>(0);
   private _scrollY = signal<number>(0);
   private _snapToGrid = signal<boolean>(true);
-  private _isDragging = signal<boolean>(false);
-  private _dragStartNote = signal<MidiNote | null>(null);
-  private _dragOffset = signal<{x: number, y: number}>({x: 0, y: 0});
-  private _resizing = signal<{noteId: string, handle: 'left' | 'right' | 'velocity'} | null>(null);
-  private _dragMode = signal<'move' | 'resize' | null>(null);
+    // NUOVO: Stato drag/resize unificato e semplificato
+  private _dragState = signal<{
+    active: boolean;
+    type: 'move' | 'resize-left' | 'resize-right' | 'velocity' | null;
+    noteId: string | null;
+    startX: number;
+    startY: number;
+    originalNote: MidiNote | null;
+  }>({
+    active: false,
+    type: null,
+    noteId: null,
+    startX: 0,
+    startY: 0,
+    originalNote: null
+  });
+
+  // NUOVO: Preview della nota durante drag/resize
+  private _previewNote = signal<MidiNote | null>(null);
+
+  readonly dragState = this._dragState.asReadonly();
+  readonly previewNote = this._previewNote.asReadonly();
 
   // Piano keys (88 keys)
   readonly pianoKeys = computed(() => {
@@ -101,8 +116,7 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
   readonly effectiveClipId = computed(() => {
     const clip = this.currentClip();
     return clip?.id || null;
-  });
-  // Notes from current clip
+  });  // Notes from current clip (con preview durante drag)
   readonly clipNotes = computed(() => {
     const clip = this.currentClip();
     if (!clip) {
@@ -110,8 +124,42 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
       return [];
     }
     
+    let notes = Array.from(clip.notes.values()).sort((a, b) => a.startTime - b.startTime);
+    
+    // Se c'è un preview attivo, sostituisci la nota originale con quella di preview
+    const dragState = this._dragState();
+    const previewNote = this._previewNote();
+    
+    if (dragState.active && previewNote && dragState.noteId) {
+      notes = notes.map(note => 
+        note.id === dragState.noteId ? previewNote : note
+      );
+    }
+    
+    console.log('🔍 clipNotes computed:', notes.length, 'notes from clip', clip.id, 'with preview:', !!previewNote);
+    return notes;
+  });
+  // Notes da visualizzare (incluso preview durante drag/resize)
+  readonly displayNotes = computed(() => {
+    const clip = this.currentClip();
+    if (!clip) return [];
+    
     const notes = Array.from(clip.notes.values()).sort((a, b) => a.startTime - b.startTime);
-    console.log('🔍 clipNotes computed:', notes.length, 'notes from clip', clip.id);
+    const previewNote = this._previewNote();
+    const dragState = this._dragState();
+    
+    // Se c'è un preview attivo, nascondi la nota originale e mostra il preview
+    if (previewNote && dragState.active && dragState.noteId) {
+      const filteredNotes = notes.filter(note => note.id !== dragState.noteId);
+      // Aggiungi il preview note con un ID temporaneo
+      const previewWithTempId = {
+        ...previewNote,
+        id: `${previewNote.id}_preview`,
+        isPreview: true
+      };
+      return [...filteredNotes, previewWithTempId].sort((a, b) => a.startTime - b.startTime);
+    }
+    
     return notes;
   });
 
@@ -144,26 +192,18 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
     }
     
     return lines;
-  });
-
-  // Readonly getters
+  });  // Readonly getters
   readonly selectedNotes = computed(() => this.selectionService.selectedNoteIds());
   readonly zoomLevel = this._zoomLevel.asReadonly();
   readonly scrollX = this._scrollX.asReadonly();
   readonly scrollY = this._scrollY.asReadonly();
   readonly snapToGridEnabled = this._snapToGrid.asReadonly();
-  readonly isDragging = this._isDragging.asReadonly();
-  readonly dragStartNote = this._dragStartNote.asReadonly();
-  readonly resizing = this._resizing.asReadonly();
-  readonly dragMode = this._dragMode.asReadonly();
 
   // Transport state
   readonly isPlaying = computed(() => this.transportService.isPlaying());
   readonly currentTime = computed(() => this.transportService.currentTime());
   readonly isLooping = computed(() => this.transportService.isLooping());
-  readonly bpm = computed(() => this.transportService.bpm());
-
-  readonly playheadPosition = computed(() => {
+  readonly bpm = computed(() => this.transportService.bpm());  readonly playheadPosition = computed(() => {
     const currentTimeValue = this.currentTime();
     const clip = this.currentClip();
     
@@ -171,26 +211,42 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
       return Math.max(0, currentTimeValue) * this.beatWidth();
     }
     
-    const relativeTime = currentTimeValue - clip.startTime;
-    return Math.max(0, relativeTime) * this.beatWidth();
+    // CORRETTO: Gestione proper del loop con timing preciso
+    const clipStartTime = clip.startTime;
+    const clipLength = clip.length;
+    const relativeTime = currentTimeValue - clipStartTime;
+    
+    // Se siamo nel range del clip, mostra la posizione relativa
+    if (relativeTime >= 0 && relativeTime < clipLength) {
+      return relativeTime * this.beatWidth();
+    }
+    
+    // Se siamo in loop, calcola la posizione nel ciclo
+    if (this.isLooping() && relativeTime >= 0) {
+      const loopPosition = relativeTime % clipLength;
+      return loopPosition * this.beatWidth();
+    }
+    
+    // Altrimenti nascondi il playhead
+    return -1;
   });
 
-  readonly showPlayhead = computed(() => this.isPlaying());
-
-  readonly dragCursorStyle = computed(() => {
-    const mode = this._dragMode();
-    if (!this._isDragging()) return 'default';
-    
-    switch (mode) {
+  readonly showPlayhead = computed(() => this.isPlaying());  readonly dragCursorStyle = computed(() => {
+    const state = this._dragState();
+    if (!state.active) return 'default';
+      switch (state.type) {
       case 'move': return 'grabbing';
-      case 'resize': return 'ew-resize';
+      case 'resize-left': 
+      case 'resize-right': return 'ew-resize';
+      case 'velocity': return 'ns-resize';
       default: return 'default';
     }
-  });  ngOnInit(): void {
+  });
+    ngOnInit(): void {
     console.log('🎹 PIANO ROLL COMPONENT INITIALIZED!');
-    console.log('� Input clipId:', this.clipId);
+    console.log('📎 Input clipId:', this.clipId);
     console.log('🔍 Input trackId:', this.trackId);
-    console.log('�📊 Current clips:', this.stateService.clips());
+    console.log('📊 Current clips:', this.stateService.clips());
     console.log('📊 Current tracks:', this.stateService.tracks());
     console.log('📊 Selected clips:', this.selectionService.selectedClipIds());
     console.log('📊 Selected tracks:', this.selectionService.selectedTrackIds());
@@ -199,9 +255,9 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
     
     this.centerOnMiddleC();
     this.setupDragListeners();
+    this.setupKeyboardListeners();
     console.log('🎹 Piano roll setup completed');
-    // Rimuoviamo ensureClipExists() da qui - lo faremo solo quando necessario
-  }  ngAfterViewInit(): void {
+  }ngAfterViewInit(): void {
     console.log('🔍 PIANO ROLL VIEW INIT - Checking DOM elements...');
     console.log('🎹 Grid area element:', this.gridArea?.nativeElement);
     console.log('🎹 Piano keys container:', this.pianoKeysContainer?.nativeElement);
@@ -237,10 +293,11 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
     // Initialize scroll synchronization after view is ready
     this.initializeScrollSync();
   }
-
-  ngOnDestroy(): void {
-    this.removeDragListeners();
-  }
+  // NUOVO: Remove keyboard listeners  
+  private removeKeyboardListeners(): void {
+    if (typeof window !== 'undefined') {
+      document.removeEventListener('keydown', this.onKeyDown);
+    }  }
 
   // Zoom controls
   zoomIn(): void {
@@ -343,27 +400,18 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
   testGridClick(): void {
     console.log('🧪 TEST GRID CLICK CALLED');
     this.onGridClick(new MouseEvent('click', { clientX: 100, clientY: 100 }), 60);
-  }
-  // Grid click handler
+  }  // Grid click handler
   onGridClick(event: MouseEvent, note: number): void {
-    console.log('🎯🎯🎯 GRID CLICK INTERCEPTED! Note:', note);
-    console.log('Event details:', { 
-      clientX: event.clientX, 
-      clientY: event.clientY,
-      target: event.target 
-    });
+    console.log('🎯 Grid click for note:', note);
     
     event.preventDefault();
     event.stopPropagation();
     
-    // Assicurati che esista un clip funzionante
     const workingClipId = this.ensureWorkingClip();
     if (!workingClipId) {
       console.error('❌ Could not create or find a working clip');
       return;
     }
-
-    console.log('✅ Working clip ID:', workingClipId);
 
     const gridArea = this.gridArea?.nativeElement;
     if (!gridArea) {
@@ -372,25 +420,20 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
     }
     
     const rect = gridArea.getBoundingClientRect();
-    // CORRETTO: Considera lo scroll orizzontale
     const clickX = event.clientX - rect.left + gridArea.scrollLeft;
     
     const beatWidth = this.beatWidth();
     const clickTime = clickX / beatWidth;
     const snappedTime = this.snapToGrid(clickTime);
     
-    console.log('📍 Position calc CORRECTED:', { 
-      clientX: event.clientX,
-      rectLeft: rect.left,
-      scrollLeft: gridArea.scrollLeft,
-      finalClickX: clickX,
-      clickTime, 
-      snappedTime, 
-      beatWidth 
-    });
+    // CORRETTO: Assicurati che il tempo sia nel range del clip
+    const clip = this.currentClip();
+    if (clip && snappedTime >= clip.length) {
+      console.log('❌ Click outside clip bounds');
+      return;
+    }
     
     console.log('🎵 Creating note at time:', snappedTime, 'for note:', note);
-    
     this.createNote(note, snappedTime, 100);
   }
 
@@ -423,34 +466,66 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
       // Update scroll position signal
       this._scrollY.set(target.scrollTop);
     }
-  }
-
-  // Note interaction
+  }  // NUOVO: Mouse down su nota (drag)
   onNoteMouseDown(note: MidiNote, event: MouseEvent): void {
     event.stopPropagation();
-    this.selectionService.selectNote(note.id);
+    event.preventDefault();
+    
+    console.log('🎯 Note mouse down:', note.id);
+    
+    // Seleziona la nota
+    if (!this.isNoteSelected(note.id)) {
+      this.selectionService.selectNote(note.id);
+    }
+    
+    // Inizia drag
+    this._dragState.set({
+      active: true,
+      type: 'move',
+      noteId: note.id,
+      startX: event.clientX,
+      startY: event.clientY,
+      originalNote: { ...note }
+    });
+    
+    document.body.style.cursor = 'grabbing';
+    console.log('✅ Drag started');
   }
 
   onNoteDoubleClick(note: MidiNote, event: MouseEvent): void {
     event.stopPropagation();
-    // Delete note on double click
+    event.preventDefault();
+    
+    console.log('🗑️ Deleting note:', note.id);
+    
     const effectiveClipId = this.effectiveClipId();
     if (effectiveClipId) {
-      this.clipManager.removeNoteFromClip(effectiveClipId, note.id);
+      // Prima rimuovi la selezione
+      this.selectionService.clearNoteSelection();
+      
+      // Poi rimuovi la nota dal clip
+      const success = this.clipManager.removeNoteFromClip(effectiveClipId, note.id);
+      
+      if (success) {
+        console.log('✅ Note deleted successfully');
+        this.cdr.detectChanges();
+      } else {
+        console.error('❌ Failed to delete note');
+      }
     }
-  }
-
-  onResizeStart(note: MidiNote, handle: 'left' | 'right' | 'velocity', event: MouseEvent): void {
-    event.stopPropagation();
-    // TODO: Implement resize
-  }
-
-  // Utility methods
+  }  // Utility methods - CORRETTO per garantire note visibili
   getNotePosition(note: MidiNote): { left: number; top: number; width: number; height: number } {
     const left = note.startTime * this.beatWidth();
     const top = (108 - note.note) * this.keyHeight();
-    const width = note.duration * this.beatWidth();
-    const height = this.keyHeight() - 1;
+    const width = Math.max(20, note.duration * this.beatWidth()); // MINIMO 20px width
+    const height = Math.max(18, this.keyHeight() - 1); // MINIMO 18px height
+    
+    console.log('🎵 Note position calculated:', {
+      note: note.noteName,
+      left, top, width, height,
+      beatWidth: this.beatWidth(),
+      keyHeight: this.keyHeight()
+    });
     
     return { left, top, width, height };
   }
@@ -496,17 +571,23 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
   duplicateSelectedNotes(): void {
     // TODO: Implement duplicate selected
   }
-
   deleteSelectedNotes(): void {
     const selectedNotes = this.selectedNotes();
     const effectiveClipId = this.effectiveClipId();
     
     if (effectiveClipId && selectedNotes.length > 0) {
+      console.log('🗑️ Deleting', selectedNotes.length, 'selected notes');
+      
       selectedNotes.forEach(noteId => {
         this.clipManager.removeNoteFromClip(effectiveClipId, noteId);
       });
+      
       this.selectionService.clearNoteSelection();
-    }  }
+      this.cdr.detectChanges();
+      
+      console.log('✅ Selected notes deleted');
+    }
+  }
 
   // Private methods
   private centerOnMiddleC(): void {
@@ -531,13 +612,18 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
       this.gridArea.nativeElement.scrollTop = initialScrollY;
     }
   }
-
   private setupDragListeners(): void {
-    // TODO: Implement drag listeners
+    if (typeof window !== 'undefined') {
+      document.addEventListener('mousemove', this.onMouseMove);
+      document.addEventListener('mouseup', this.onMouseUp);
+    }
   }
 
   private removeDragListeners(): void {
-    // TODO: Remove drag listeners
+    if (typeof window !== 'undefined') {
+      document.removeEventListener('mousemove', this.onMouseMove);
+      document.removeEventListener('mouseup', this.onMouseUp);
+    }
   }
   private ensureClipExists(): void {
     const effectiveClipId = this.effectiveClipId();
@@ -640,6 +726,188 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
     } catch (error) {
       console.error('Failed to create clip:', error);
       return null;
+    }  
+  }  // NUOVO: Mouse move semplificato con throttling
+  private onMouseMove = (event: MouseEvent): void => {
+    const state = this._dragState();
+    if (!state.active || !state.originalNote) return;
+
+    // Throttling per evitare troppi aggiornamenti
+    const now = Date.now();
+    if (this.lastPreviewUpdate && now - this.lastPreviewUpdate < 16) return; // ~60fps
+    this.lastPreviewUpdate = now;
+
+    const deltaX = event.clientX - state.startX;
+    const deltaY = event.clientY - state.startY;
+    
+    this.updateNotePreview(state, deltaX, deltaY);
+  };
+
+  private lastPreviewUpdate = 0;// CORRETTO: Mouse up handler per completare drag E resize
+  // NUOVO: Mouse up semplificato
+  private onMouseUp = (event: MouseEvent): void => {
+    const state = this._dragState();
+    if (!state.active || !state.originalNote) return;
+
+    console.log('🎯 Mouse up, completing operation:', state.type);
+
+    const deltaX = event.clientX - state.startX;
+    const deltaY = event.clientY - state.startY;
+    
+    this.applyNoteChange(state, deltaX, deltaY);
+    
+    // Reset state e preview
+    this._dragState.set({
+      active: false,
+      type: null,
+      noteId: null,
+      startX: 0,
+      startY: 0,
+      originalNote: null
+    });
+    
+    this._previewNote.set(null); // Pulisci il preview
+    
+    document.body.style.cursor = 'default';
+    console.log('✅ Operation completed');
+  };  // NUOVO: Aggiorna preview della nota durante drag/resize (NON modifica la nota reale)
+  private updateNotePreview(state: any, deltaX: number, deltaY: number): void {
+    if (!state.originalNote) return;
+
+    let previewNote = { ...state.originalNote };
+
+    switch (state.type) {
+      case 'move':
+        const timeOffset = deltaX / this.beatWidth();
+        const noteOffset = Math.round(-deltaY / this.keyHeight());
+        
+        previewNote.startTime = Math.max(0, state.originalNote.startTime + timeOffset);
+        previewNote.note = Math.max(21, Math.min(108, state.originalNote.note + noteOffset));
+        previewNote.noteName = this.getNoteNameFromNumber(previewNote.note);
+        previewNote.endTime = previewNote.startTime + previewNote.duration;
+        break;
+
+      case 'resize-left':
+        const leftTimeOffset = deltaX / this.beatWidth();
+        const newStartTime = Math.max(0, state.originalNote.startTime + leftTimeOffset);
+        const maxStartTime = state.originalNote.startTime + state.originalNote.duration - 0.25;
+        
+        previewNote.startTime = Math.min(newStartTime, maxStartTime);
+        previewNote.duration = state.originalNote.startTime + state.originalNote.duration - previewNote.startTime;
+        previewNote.endTime = previewNote.startTime + previewNote.duration;
+        break;
+
+      case 'resize-right':
+        const rightTimeOffset = deltaX / this.beatWidth();
+        previewNote.duration = Math.max(0.25, state.originalNote.duration + rightTimeOffset);
+        previewNote.endTime = previewNote.startTime + previewNote.duration;
+        break;
+
+      case 'velocity':
+        const velocityChange = Math.round(-deltaY / 2);
+        previewNote.velocity = Math.max(1, Math.min(127, state.originalNote.velocity + velocityChange));
+        break;
+    }
+
+    // Applica snap se abilitato
+    if (this._snapToGrid() && (state.type === 'move' || state.type.includes('resize'))) {
+      previewNote.startTime = this.snapToGrid(previewNote.startTime);
+      if (state.type === 'resize-right') {
+        previewNote.duration = this.snapToGrid(previewNote.duration);
+      }
+      previewNote.endTime = previewNote.startTime + previewNote.duration;
+    }
+
+    // IMPORTANTE: Mantieni lo stesso ID per sostituire correttamente la nota nel computed
+    previewNote.id = state.originalNote.id;
+
+    // Aggiorna solo il preview (NON la nota reale)
+    this._previewNote.set(previewNote);
+  }
+
+  // NUOVO: Applica il cambiamento finale alla nota
+  private applyNoteChange(state: any, deltaX: number, deltaY: number): void {
+    if (!state.originalNote) return;
+
+    const effectiveClipId = this.effectiveClipId();
+    if (!effectiveClipId) return;
+
+    // Calcola i valori finali
+    let finalNote = { ...state.originalNote };
+
+    switch (state.type) {
+      case 'move':
+        const timeOffset = deltaX / this.beatWidth();
+        const noteOffset = Math.round(-deltaY / this.keyHeight());
+        
+        finalNote.startTime = Math.max(0, state.originalNote.startTime + timeOffset);
+        finalNote.note = Math.max(21, Math.min(108, state.originalNote.note + noteOffset));
+        finalNote.noteName = this.getNoteNameFromNumber(finalNote.note);
+        finalNote.endTime = finalNote.startTime + finalNote.duration;
+        break;
+
+      case 'resize-left':
+        const leftTimeOffset = deltaX / this.beatWidth();
+        const newStartTime = Math.max(0, state.originalNote.startTime + leftTimeOffset);
+        const maxStartTime = state.originalNote.startTime + state.originalNote.duration - 0.25;
+        
+        finalNote.startTime = Math.min(newStartTime, maxStartTime);
+        finalNote.duration = state.originalNote.startTime + state.originalNote.duration - finalNote.startTime;
+        finalNote.endTime = finalNote.startTime + finalNote.duration;
+        break;
+
+      case 'resize-right':
+        const rightTimeOffset = deltaX / this.beatWidth();
+        finalNote.duration = Math.max(0.25, state.originalNote.duration + rightTimeOffset);
+        finalNote.endTime = finalNote.startTime + finalNote.duration;
+        break;
+
+      case 'velocity':
+        const velocityChange = Math.round(-deltaY / 2);
+        finalNote.velocity = Math.max(1, Math.min(127, state.originalNote.velocity + velocityChange));
+        break;
+    }
+
+    // Applica snap se abilitato
+    if (this._snapToGrid() && (state.type === 'move' || state.type.includes('resize'))) {
+      finalNote.startTime = this.snapToGrid(finalNote.startTime);
+      if (state.type === 'resize-right') {
+        finalNote.duration = this.snapToGrid(finalNote.duration);
+      }
+      finalNote.endTime = finalNote.startTime + finalNote.duration;
+    }
+
+    // Verifica che la nota sia nel range del clip
+    const clip = this.currentClip();
+    if (clip && finalNote.startTime >= clip.length) {
+      console.log('❌ Note outside clip bounds, reverting');
+      // Ripristina la nota originale
+      this.clipManager.updateNoteInClip(effectiveClipId, state.noteId, {
+        startTime: state.originalNote.startTime,
+        duration: state.originalNote.duration,
+        endTime: state.originalNote.endTime,
+        note: state.originalNote.note,
+        noteName: state.originalNote.noteName,
+        velocity: state.originalNote.velocity
+      });
+      return;
+    }
+
+    // Applica il cambiamento finale
+    const success = this.clipManager.updateNoteInClip(effectiveClipId, state.noteId, {
+      startTime: finalNote.startTime,
+      duration: finalNote.duration,
+      endTime: finalNote.endTime,
+      note: finalNote.note,
+      noteName: finalNote.noteName,
+      velocity: finalNote.velocity
+    });
+
+    if (success) {
+      console.log('✅ Note updated successfully:', state.type);
+      this.cdr.detectChanges();
+    } else {
+      console.error('❌ Failed to update note');
     }
   }
 
@@ -650,4 +918,82 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
   
   trackByGridLine = (index: number, line: any): string => 
     `${line.beat}-${line.subdivision}`;
+  // NUOVO: Keyboard event handler
+  private onKeyDown = (event: KeyboardEvent): void => {
+    // Solo se il piano roll ha il focus o se non ci sono input attivi
+    const activeElement = document.activeElement;
+    const isInputActive = activeElement && 
+      (activeElement.tagName === 'INPUT' || 
+       activeElement.tagName === 'TEXTAREA' || 
+       (activeElement as HTMLElement).contentEditable === 'true');
+    
+    if (isInputActive) return;
+
+    switch (event.key) {
+      case 'Delete':
+      case 'Backspace':
+        event.preventDefault();
+        this.deleteSelectedNotes();
+        break;
+      case 'Escape':
+        event.preventDefault();
+        this.selectionService.clearNoteSelection();
+        break;
+      case ' ': // Spacebar
+        event.preventDefault();
+        this.transportService.togglePlayback();
+        break;
+    }
+  }
+
+  // NUOVO: Setup keyboard listeners
+  private setupKeyboardListeners(): void {
+    if (typeof window !== 'undefined') {
+      document.addEventListener('keydown', this.onKeyDown);
+    }
+  }  // AGGIORNATO: Reset drag state on destroy
+  ngOnDestroy(): void {
+    this.removeDragListeners();
+    this.removeKeyboardListeners();
+    
+    // Reset drag state e preview
+    this._dragState.set({
+      active: false,
+      type: null,
+      noteId: null,
+      startX: 0,
+      startY: 0,
+      originalNote: null
+    });
+    
+    this._previewNote.set(null);
+    
+    document.body.style.cursor = 'default';
+  }
+
+  // NUOVO: Mouse down su handle resize
+  onResizeHandleMouseDown(note: MidiNote, handle: 'left' | 'right' | 'velocity', event: MouseEvent): void {
+    event.stopPropagation();
+    event.preventDefault();
+    
+    console.log('🎯 Resize handle mouse down:', note.id, handle);
+    
+    // Seleziona la nota
+    if (!this.isNoteSelected(note.id)) {
+      this.selectionService.selectNote(note.id);
+    }
+    
+    // Inizia resize
+    this._dragState.set({
+      active: true,
+      type: handle === 'left' ? 'resize-left' : handle === 'right' ? 'resize-right' : 'velocity',
+      noteId: note.id,
+      startX: event.clientX,
+      startY: event.clientY,
+      originalNote: { ...note }
+    });
+    
+    document.body.style.cursor = handle === 'velocity' ? 'ns-resize' : 'ew-resize';
+    console.log('✅ Resize started:', handle);
+  }
 }

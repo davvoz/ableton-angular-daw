@@ -97,41 +97,42 @@
           [class.black-key-line]="key.isBlack"
           [style.top.px]="key.keyIndex * keyHeight()"
           [style.height.px]="1">
-        </div>
-
-        <!-- Notes Layer -->
+        </div>        <!-- Notes Layer -->
         <div class="notes-layer">
           <div 
-            *ngFor="let note of clipNotes(); trackBy: trackByNoteId"
+            *ngFor="let note of displayNotes(); trackBy: trackByNoteId"
             class="midi-note"
-            [class.selected]="isNoteSelected(note.id)"
-            [class.dragging]="isDragging() && dragStartNote()?.id === note.id"
+            [class.selected]="isNoteSelected(note.id.replace('_preview', ''))"
+            [class.dragging]="dragState().active && dragState().noteId === note.id.replace('_preview', '')"
+            [class.preview]="note.id.includes('_preview')"
             [style.left.px]="getNotePosition(note).left"
             [style.top.px]="getNotePosition(note).top"
             [style.width.px]="getNotePosition(note).width"
-            [style.height.px]="getNotePosition(note).height"
-            (mousedown)="onNoteMouseDown(note, $event)"
-            (dblclick)="onNoteDoubleClick(note, $event)">
+            [style.height.px]="getNotePosition(note).height"            [style.cursor]="dragState().active && dragState().noteId === note.id.replace('_preview', '') ? dragCursorStyle() : 'grab'"
+            (mousedown)="!note.id.includes('_preview') && onNoteMouseDown(note, $event)"
+            (dblclick)="!note.id.includes('_preview') && onNoteDoubleClick(note, $event)"
+            title="Double-click to delete. Drag to move.">
             
             <div class="note-content">
               <span class="note-name">{{ note.noteName }}</span>
               <span class="note-velocity">{{ note.velocity }}</span>
-            </div>
-
-            <!-- Resize Handles -->
+            </div>            <!-- Resize Handles (solo per note reali, non preview) -->
             <div 
+              *ngIf="!note.id.includes('_preview')"
               class="resize-handle left"
-              (mousedown)="onResizeStart(note, 'left', $event)">
+              (mousedown)="onResizeHandleMouseDown(note, 'left', $event)">
             </div>
             <div 
+              *ngIf="!note.id.includes('_preview')"
               class="resize-handle right"
-              (mousedown)="onResizeStart(note, 'right', $event)">
+              (mousedown)="onResizeHandleMouseDown(note, 'right', $event)">
             </div>
 
-            <!-- Velocity Handle -->
+            <!-- Velocity Handle (solo per note reali, non preview) -->
             <div 
+              *ngIf="!note.id.includes('_preview')"
               class="velocity-handle"
-              (mousedown)="onResizeStart(note, 'velocity', $event)">
+              (mousedown)="onResizeHandleMouseDown(note, 'velocity', $event)">
             </div>
           </div>
         </div>

@@ -229,29 +229,29 @@
           left: 0;
           right: 0;
           bottom: 0;
-          z-index: 100; // MOLTO ALTO per intercettare i clic
+          z-index: 50; /* RIDOTTO: deve stare SOTTO le note! */
+          pointer-events: auto; /* Per permettere i click sulla griglia */
 
           .grid-row {
             position: absolute;
             width: 100%;
-            background: rgba(255, 0, 0, 0.1); // DEBUG: Sfondo rosso trasparente per vedere le celle
+            background: transparent; /* RIMOSSO DEBUG: non serve più sfondo rosso */
             cursor: crosshair;
-            border: 1px solid rgba(255, 0, 0, 0.3); // DEBUG: Bordo rosso per vedere le celle
-
-            &:hover {
-              background: rgba(76, 175, 80, 0.4);
-              border: 1px solid rgba(76, 175, 80, 0.8);
+            border: none; /* RIMOSSO DEBUG: non serve più bordo rosso */            &:hover {
+              background: rgba(76, 175, 80, 0.1); /* RIDOTTO: hover più leggero */
+              border: 1px solid rgba(76, 175, 80, 0.3);
             }
           }
-        }.notes-layer {
+        }
+
+        .notes-layer {
           position: absolute;
           top: 0;
           left: 0;
           right: 0;
           bottom: 0;
-          z-index: 200; // Sopra le celle della griglia ma permettiamo agli eventi di passare
-
-          .midi-note {
+          z-index: 200; /* SOPRA il grid (che è z-index: 50) */
+          pointer-events: auto; /* AGGIUNTO: assicura che gli eventi del mouse funzionino */          .midi-note {
             position: absolute;
             background: linear-gradient(135deg, #4CAF50, #45a049);
             border: 1px solid #2e7d32;
@@ -259,9 +259,12 @@
             cursor: move;
             transition: all 0.2s ease;
             min-width: 20px;
+            min-height: 18px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-
-            &:hover {
+            z-index: 250;
+            opacity: 1 !important;
+            display: block !important;
+            visibility: visible !important;&:hover {
               background: linear-gradient(135deg, #66BB6A, #4CAF50);
               box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
               transform: translateY(-1px);
@@ -274,9 +277,19 @@
             }
 
             &.dragging {
+              z-index: 300; /* SOPRA tutto durante il drag */
               opacity: 0.8;
-              z-index: 1000;
-              transform: scale(1.05);
+              transform: scale(1.02);
+              box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+              pointer-events: none; /* Evita interferenze durante il drag */
+            }
+
+            // Nota di preview durante drag/resize
+            &.preview {
+              opacity: 0.7;
+              border: 2px dashed rgba(76, 175, 80, 0.8);
+              background: rgba(76, 175, 80, 0.3);
+              z-index: 400; /* Sopra tutto */
             }
 
             .note-content {
@@ -290,59 +303,55 @@
 
               .note-name {
                 display: inline-block;
-              }
-
-              .note-velocity {
+              }              .note-velocity {
                 display: inline-block;
                 margin-left: 4px;
                 opacity: 0.8;
                 font-size: 8px;
               }
-            }
-
-            .resize-handle {
+            }            .resize-handle {
               position: absolute;
-              top: 0;
-              bottom: 0;
-              width: 4px;
-              cursor: ew-resize;
-              background: transparent;
+              background: rgba(76, 175, 80, 0.8);
               opacity: 0;
               transition: opacity 0.2s ease;
-
+              z-index: 150;
+              
               &.left {
-                left: 0;
+                left: -3px;
+                top: 0;
+                width: 6px;
+                height: 100%;
+                cursor: ew-resize;
               }
-
+              
               &.right {
-                right: 0;
+                right: -3px;
+                top: 0;
+                width: 6px;
+                height: 100%;
+                cursor: ew-resize;
               }
-
-              &:hover {
-                background: rgba(255, 255, 255, 0.3);
-              }
-            }
-
-            &:hover .resize-handle {
-              opacity: 1;
             }
 
             .velocity-handle {
               position: absolute;
-              bottom: -3px;
+              top: -3px;
               left: 50%;
               transform: translateX(-50%);
-              width: 8px;
+              width: 12px;
               height: 6px;
-              background: rgba(255, 255, 255, 0.6);
-              border-radius: 2px;
+              background: rgba(255, 193, 7, 0.8);
               cursor: ns-resize;
               opacity: 0;
               transition: opacity 0.2s ease;
+              z-index: 150;
             }
 
-            &:hover .velocity-handle {
-              opacity: 1;
+            &:hover {
+              .resize-handle,
+              .velocity-handle {
+                opacity: 1;
+              }
             }
           }
         }
@@ -483,7 +492,7 @@
       gap: 16px;
     }
   }
-}
+
 
 // Global scrollbar styling for piano roll
 .piano-roll-container {
@@ -505,4 +514,5 @@
       background: rgba(255, 255, 255, 0.5);
     }
   }
+}
 }
