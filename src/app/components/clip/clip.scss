@@ -1,0 +1,259 @@
+.clip-container {
+  position: absolute;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--clip-color, #2196F3), var(--clip-color-dark, #1976D2));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  &.selected {
+    border: 2px solid #4CAF50 !important;
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+  }
+
+  &.dragging {
+    opacity: 0.8;
+    transform: scale(1.02) rotate(2deg);
+    z-index: 1000;
+  }
+
+  &.muted {
+    opacity: 0.6;
+    filter: grayscale(50%);
+  }
+
+  &.playing {
+    border-left: 4px solid #4CAF50;
+    animation: pulse 1s infinite;
+  }
+
+  &.loop {
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.1) 2px,
+      rgba(255, 255, 255, 0.1) 4px
+    );
+  }
+
+  // Clip Header
+  .clip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.2);
+    font-size: 11px;
+    color: white;
+    font-weight: 500;
+
+    .clip-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 120px;
+    }
+
+    .clip-info {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+
+      .loop-indicator,
+      .mute-indicator,
+      .play-indicator {
+        font-size: 10px;
+        opacity: 0.8;
+      }
+    }
+  }
+
+  // Notes Preview
+  .notes-preview {
+    position: relative;
+    height: calc(100% - 24px);
+    margin: 2px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+
+    .note-bar {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 1px;
+      min-width: 2px;
+      transition: opacity 0.2s ease;
+
+      &:hover {
+        background: rgba(255, 255, 255, 1);
+      }
+    }
+  }
+
+  // Empty Clip
+  .empty-clip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: calc(100% - 24px);
+    margin: 2px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+    border: 1px dashed rgba(255, 255, 255, 0.3);
+
+    .empty-text {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.6);
+      font-style: italic;
+    }
+  }
+
+  // Clip Controls
+  .clip-controls {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    display: flex;
+    gap: 2px;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 4px;
+    padding: 2px;
+
+    .control-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      border-radius: 2px;
+      color: white;
+      font-size: 10px;
+      padding: 2px 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: scale(1.1);
+      }
+
+      &.active {
+        background: #FF5722;
+      }
+
+      &.mute-btn.active {
+        background: #F44336;
+      }
+
+      &.duplicate-btn:hover {
+        background: #2196F3;
+      }
+
+      &.delete-btn:hover {
+        background: #F44336;
+      }
+    }
+  }
+
+  // Duration Indicator
+  .duration-indicator {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(0, 0, 0, 0.5);
+    padding: 1px 3px;
+    border-radius: 2px;
+    font-weight: 500;
+  }
+
+  // Selection Border
+  .selection-border {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 2px solid #4CAF50;
+    border-radius: 4px;
+    pointer-events: none;
+    animation: pulse-border 1.5s infinite;
+  }
+}
+
+// Animations
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes pulse-border {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .clip-container {
+    .clip-header {
+      padding: 2px 4px;
+      font-size: 10px;
+
+      .clip-name {
+        max-width: 80px;
+      }
+    }
+
+    .clip-controls {
+      .control-btn {
+        font-size: 9px;
+        padding: 1px 3px;
+      }
+    }
+
+    .duration-indicator {
+      font-size: 8px;
+    }
+  }
+}
+
+// Color Variants
+.clip-container {
+  &[data-clip-type="drum"] {
+    --clip-color: #9C27B0;
+    --clip-color-dark: #7B1FA2;
+  }
+
+  &[data-clip-type="bass"] {
+    --clip-color: #FF5722;
+    --clip-color-dark: #D84315;
+  }
+
+  &[data-clip-type="synth"] {
+    --clip-color: #2196F3;
+    --clip-color-dark: #1976D2;
+  }
+
+  &[data-clip-type="vocal"] {
+    --clip-color: #4CAF50;
+    --clip-color-dark: #388E3C;
+  }
+
+  &[data-clip-type="fx"] {
+    --clip-color: #FF9800;
+    --clip-color-dark: #F57C00;
+  }
+}

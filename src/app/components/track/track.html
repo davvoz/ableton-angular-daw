@@ -1,0 +1,118 @@
+<div 
+  class="track-container"
+  [ngClass]="{
+    'selected': isSelected(),
+    'hovered': isHovered(),
+    'muted': trackData.isMuted,
+    'solo': trackData.isSolo,
+    'armed': trackData.isArmed
+  }"
+  [ngStyle]="getTrackStyle()"
+  (click)="onTrackClick($event)"
+  (dblclick)="onTrackDoubleClick()"
+  (mouseenter)="onMouseEnter()"
+  (mouseleave)="onMouseLeave()"
+  [attr.aria-label]="'Track: ' + trackData.name">
+  <!-- Track Header -->
+  <div class="track-header">
+    <div class="track-info">
+      <h4 class="track-name">{{ trackData.name }}</h4>
+      <span class="track-type">{{ trackData.instrumentType }}</span>
+      <span class="clip-count">{{ clipCount() }} clips</span>
+    </div>
+
+    <!-- Track Controls -->
+    <div class="track-controls">
+      <button 
+        class="control-btn mute-btn"
+        [class.active]="trackData.isMuted"
+        (click)="toggleMute(); $event.stopPropagation()"
+        title="Mute track">
+        M
+      </button>
+      <button 
+        class="control-btn solo-btn"
+        [class.active]="trackData.isSolo"
+        (click)="toggleSolo(); $event.stopPropagation()"
+        title="Solo track">
+        S
+      </button>
+      <button 
+        class="control-btn arm-btn"
+        [class.active]="trackData.isArmed"
+        (click)="toggleArm(); $event.stopPropagation()"
+        title="Arm track for recording">
+        R
+      </button>
+      <button 
+        class="control-btn create-clip-btn"
+        (click)="createNewClip(); $event.stopPropagation()"
+        title="Create new clip (Ctrl+N)">
+        +
+      </button>
+    </div>
+  </div>
+  <!-- NUOVO: Instrument Section -->
+  <div class="instrument-section" *ngIf="showInstrumentControls()">
+    <!-- Instrument Selector -->    <div class="instrument-selector-wrapper">
+      <app-instrument-selector
+        [selectedInstrumentId]="trackData.instrumentId"
+        [disabled]="disabled()"
+        (instrumentSelected)="onInstrumentSelected($event)">
+      </app-instrument-selector>
+    </div>
+
+    <!-- Instrument Controls -->
+    <div class="instrument-controls-wrapper" *ngIf="currentInstrument()">
+      <app-instrument-controls
+        [instrument]="currentInstrument()"
+        [disabled]="disabled()"
+        (parameterChanged)="onParameterChanged($event)"
+        (notePlay)="onNotePlay($event)"
+        (noteStop)="onNoteStop($event)">
+      </app-instrument-controls>
+    </div>
+  </div>
+
+  <!-- Clips Container -->
+  <div class="clips-container">
+    @for (clip of clips(); track clip.id) {
+      <app-clip
+        [clipData]="clip"
+        [trackHeight]="trackData.height"
+        [timelineZoom]="timelineZoom"
+        [beatWidth]="50"
+        (clipSelected)="onClipSelect($event.clipId, $event.event)"
+        (clipDoubleClick)="onClipDoubleClick($event)"
+        (clipContextMenu)="onClipContextMenu($event.clipId, $event.event)">
+      </app-clip>
+    }
+
+    <!-- Empty state for clips -->
+    @if (clips().length === 0) {
+      <div class="empty-clips">
+        <span class="empty-text">Drop clips here or double-click to create</span>
+      </div>
+    }
+
+    <!-- Click area for creating clips -->
+    <div 
+      class="clip-creation-area"
+      (dblclick)="onTimelineDoubleClick($event)"
+      (drop)="onDrop($event)"
+      (dragover)="onDragOver($event)"
+      title="Double-click to create clip">
+    </div>
+  </div>
+
+  <!-- Track Timeline Grid -->
+  <div class="timeline-grid">
+    @for (beat of timelineBeats(); track beat) {
+      <div 
+        class="beat-marker"
+        [style.left.px]="beat * 50 * timelineZoom"
+        [class.bar]="beat % 4 === 0">
+      </div>
+    }
+  </div>
+</div>

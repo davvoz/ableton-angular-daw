@@ -1,0 +1,282 @@
+<div class="instrument-controls">
+  <!-- Header con info strumento -->  <div class="header" [class.disabled]="disabled">
+    <h3 class="title">
+      <span class="icon">🎛️</span>
+      Instrument Controls
+    </h3>
+    
+    @if (hasInstrument()) {
+      <div class="instrument-info">
+        <span class="name">{{ instrumentInfo()?.name }}</span>
+        <span class="type" [class]="'type-' + instrumentInfo()?.type">
+          {{ instrumentInfo()?.type }}
+        </span>
+        <span class="status" [class.active]="instrumentInfo()?.isActive">
+          {{ instrumentInfo()?.isActive ? '🟢' : '⚫' }}
+        </span>
+        <span class="voices">{{ instrumentInfo()?.voiceCount }} voices</span>
+      </div>
+    } @else {
+      <div class="no-instrument">
+        <span class="message">No instrument selected</span>
+      </div>
+    }
+  </div>
+
+  <!-- Test Controls -->
+  <div class="test-controls" [class.disabled]="disabled || !hasInstrument()">
+    <div class="test-section">
+      <h4>🎹 Test Notes</h4>
+      <div class="test-buttons">
+        <button 
+          class="test-note"
+          (click)="playTestNote(60)"
+          [disabled]="disabled || !hasInstrument()"
+          title="Play C4 note"
+          aria-label="Play C4 note">
+          C4
+        </button>
+        <button 
+          class="test-note"
+          (click)="playTestNote(64)"
+          [disabled]="disabled || !hasInstrument()"
+          title="Play E4 note"
+          aria-label="Play E4 note">
+          E4
+        </button>
+        <button 
+          class="test-note"
+          (click)="playTestNote(67)"
+          [disabled]="disabled || !hasInstrument()"
+          title="Play G4 note"
+          aria-label="Play G4 note">
+          G4
+        </button>
+        <button 
+          class="stop-all"
+          (click)="stopAllNotes()"
+          [disabled]="disabled || !hasInstrument()"
+          title="Stop all playing notes"
+          aria-label="Stop all playing notes">
+          ⏹️ Stop All
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Parameter Controls -->
+  @if (hasInstrument()) {
+    <div class="parameters" [class.disabled]="disabled">
+      
+      <!-- Oscillator Section -->
+      @if (synthParameters().length > 0) {
+        <div class="parameter-section">
+          <h4 class="section-title">
+            <span class="icon">🌊</span>
+            Oscillator
+          </h4>
+          <div class="parameter-grid">
+            @for (param of synthParameters(); track param.name) {
+              <div class="parameter-control">
+                <label class="parameter-label">
+                  {{ param.name }}
+                  <span class="value">{{ formatParameterValue(param, getParameterValue(param.name)) }}</span>
+                </label>
+                
+                @if (isDiscreteParameter(param)) {
+                  <!-- Discrete parameter (select/buttons) -->
+                  @if (param.name === 'waveform') {
+                    <select 
+                      class="parameter-select"
+                      [value]="getParameterValue(param.name)"
+                      (change)="onParameterChange(param.name, +$any($event.target).value)"
+                      [disabled]="disabled"
+                      [title]="param.name + ' waveform selection'"
+                      [attr.aria-label]="param.name + ' parameter'"
+                      title="Waveform selection">
+                      <option value="0">Sine</option>
+                      <option value="1">Square</option>
+                      <option value="2">Sawtooth</option>
+                      <option value="3">Triangle</option>
+                    </select>                  } @else {
+                    <!-- Generic discrete slider -->                    <input 
+                      type="range"
+                      class="parameter-slider discrete"
+                      [min]="param.min"
+                      [max]="param.max"
+                      [step]="getSliderStep(param)"
+                      [value]="getParameterValue(param.name)"
+                      (input)="onParameterChange(param.name, +$any($event.target).value)"
+                      [disabled]="disabled"
+                      [title]="param.name + ' control'"
+                      [attr.aria-label]="param.name + ' parameter slider'"
+                      placeholder="Adjust parameter value">
+                  }
+                } @else {
+                  <!-- Continuous parameter (slider) -->
+                  <input 
+                    type="range"
+                    class="parameter-slider"
+                    [class.logarithmic]="param.curve === 'logarithmic'"
+                    [class.exponential]="param.curve === 'exponential'"
+                    [min]="param.min"
+                    [max]="param.max"
+                    [step]="getSliderStep(param)"
+                    [value]="getParameterValue(param.name)"
+                    (input)="onParameterChange(param.name, +$any($event.target).value)"
+                    [disabled]="disabled"
+                    [title]="param.name + ' control'"
+                    [attr.aria-label]="param.name + ' parameter slider'"
+                    [placeholder]="'Adjust ' + param.name">
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Filter Section -->
+      @if (filterParameters().length > 0) {
+        <div class="parameter-section">
+          <h4 class="section-title">
+            <span class="icon">🎚️</span>
+            Filter
+          </h4>          <div class="parameter-grid">
+            @for (param of filterParameters(); track param.name) {
+              <div class="parameter-control">
+                <label class="parameter-label">
+                  {{ param.name }}
+                  <span class="value">{{ formatParameterValue(param, getParameterValue(param.name)) }}</span>
+                </label>
+                <input 
+                  type="range"
+                  class="parameter-slider"
+                  [class.logarithmic]="param.curve === 'logarithmic'"
+                  [class.exponential]="param.curve === 'exponential'"
+                  [min]="param.min"
+                  [max]="param.max"
+                  [step]="getSliderStep(param)"
+                  [value]="getParameterValue(param.name)"
+                  (input)="onParameterChange(param.name, +$any($event.target).value)"
+                  [disabled]="disabled"
+                  [title]="param.name + ' control'"
+                  [attr.aria-label]="param.name + ' parameter slider'"
+                  [placeholder]="'Adjust ' + param.name">
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Envelope Section -->
+      @if (envelopeParameters().length > 0) {
+        <div class="parameter-section">
+          <h4 class="section-title">
+            <span class="icon">📈</span>
+            Envelope (ADSR)
+          </h4>          <div class="parameter-grid envelope-grid">
+            @for (param of envelopeParameters(); track param.name) {
+              <div class="parameter-control envelope-param">
+                <label class="parameter-label">
+                  {{ param.name | titlecase }}
+                  <span class="value">{{ formatParameterValue(param, getParameterValue(param.name)) }}</span>
+                </label>
+                <input 
+                  type="range"
+                  class="parameter-slider envelope-slider"
+                  [class.exponential]="param.curve === 'exponential'"
+                  [min]="param.min"
+                  [max]="param.max"
+                  [step]="getSliderStep(param)"
+                  [value]="getParameterValue(param.name)"
+                  (input)="onParameterChange(param.name, +$any($event.target).value)"
+                  [disabled]="disabled"
+                  [title]="param.name + ' control'"
+                  [attr.aria-label]="param.name + ' parameter slider'"
+                  [placeholder]="'Adjust ' + param.name">
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Drum Section -->
+      @if (drumParameters().length > 0) {
+        <div class="parameter-section">
+          <h4 class="section-title">
+            <span class="icon">🥁</span>
+            Drum Kit
+          </h4>          <div class="parameter-grid">
+            @for (param of drumParameters(); track param.name) {
+              <div class="parameter-control">
+                <label class="parameter-label">
+                  {{ param.name }}
+                  <span class="value">{{ formatParameterValue(param, getParameterValue(param.name)) }}</span>
+                </label>
+                <input 
+                  type="range"
+                  class="parameter-slider"
+                  [class.logarithmic]="param.curve === 'logarithmic'"
+                  [class.exponential]="param.curve === 'exponential'"
+                  [min]="param.min"
+                  [max]="param.max"
+                  [step]="getSliderStep(param)"
+                  [value]="getParameterValue(param.name)"
+                  (input)="onParameterChange(param.name, +$any($event.target).value)"
+                  [disabled]="disabled"
+                  [title]="param.name + ' control'"
+                  [attr.aria-label]="param.name + ' parameter slider'"
+                  [placeholder]="'Adjust ' + param.name">
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Master Section -->
+      @if (masterParameters().length > 0) {
+        <div class="parameter-section master-section">
+          <h4 class="section-title">
+            <span class="icon">🔊</span>
+            Master
+          </h4>          
+          <div class="parameter-grid">
+            @for (param of masterParameters(); track param.name) {
+              <div class="parameter-control master-control">
+                <label class="parameter-label">
+                  {{ param.name }}
+                  <span class="value">{{ formatParameterValue(param, getParameterValue(param.name)) }}</span>
+                </label>
+                <input 
+                  type="range"
+                  class="parameter-slider master-slider"
+                  [min]="param.min"
+                  [max]="param.max"
+                  [step]="getSliderStep(param)"
+                  [value]="getParameterValue(param.name)"
+                  (input)="onParameterChange(param.name, +$any($event.target).value)"
+                  [disabled]="disabled"
+                  [attr.title]="param.name + ' control'"
+                  [attr.aria-label]="param.name + ' parameter slider'"
+                  [attr.placeholder]="'Adjust ' + param.name">
+              </div>
+            }
+          </div>
+        </div>
+      }
+      
+      <!-- Refresh Button -->
+      <div class="refresh-section">
+        <button 
+          class="refresh-button"
+          (click)="updateParameters()"
+          [disabled]="disabled"
+          title="Refresh instrument parameters"
+          aria-label="Refresh instrument parameters">
+          🔄 Refresh Parameters
+        </button>
+      </div>
+
+    </div>
+  }
+</div>

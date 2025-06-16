@@ -1,0 +1,187 @@
+.instrument-selector {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 10px 0;
+  font-family: 'Courier New', monospace;
+  color: #fff;
+
+  h4 {
+    margin: 0 0 15px 0;
+    color: #4CAF50;
+    border-bottom: 1px solid #444;
+    padding-bottom: 8px;
+  }
+
+  .selector-container {
+    &.disabled {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+  }
+
+  .category-section {
+    margin: 20px 0;
+    
+    .category-title {
+      color: #ff9800;
+      margin: 10px 0;
+      font-size: 14px;
+      font-weight: bold;
+    }
+  }
+
+  .instruments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin: 10px 0;
+  }
+
+  .instrument-card {
+    background: #3a3a3a;
+    border: 2px solid #555;
+    border-radius: 6px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+
+    &:hover:not(.disabled) {
+      border-color: #4CAF50;
+      background: #404040;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+
+    &.selected {
+      border-color: #4CAF50;
+      background: #2e5d2e;
+      box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+    }
+
+    &.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .instrument-icon {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    .instrument-name {
+      font-weight: bold;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .instrument-type {
+      color: #bbb;
+      font-size: 12px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .instrument-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #888;
+
+      .polyphony, .cpu {
+        background: #1a1a1a;
+        padding: 2px 6px;
+        border-radius: 3px;
+      }
+    }
+  }
+
+  .all-instruments-section {
+    margin: 20px 0;
+    
+    .instrument-select {
+      width: 100%;
+      background: #1a1a1a;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 10px;
+      font-family: inherit;
+      font-size: 14px;
+
+      &:focus {
+        outline: none;
+        border-color: #4CAF50;
+        box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      option {
+        background: #1a1a1a;
+        color: #fff;
+        padding: 5px;
+      }
+    }
+  }
+
+  .selected-info {
+    margin-top: 20px;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 15px;
+
+    h5 {
+      margin: 0 0 10px 0;
+      color: #4CAF50;
+    }
+
+    .selected-details {
+      .detail-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 8px 0;
+        
+        .label {
+          color: #bbb;
+          font-weight: bold;
+          min-width: 100px;
+        }
+
+        .value {
+          color: #fff;
+          text-align: right;
+          flex: 1;
+        }
+      }
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .instrument-selector {
+    .instruments-grid {
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 8px;
+    }
+
+    .instrument-card {
+      padding: 8px;
+      
+      .instrument-icon {
+        font-size: 20px;
+      }
+      
+      .instrument-name {
+        font-size: 12px;
+      }
+    }
+  }
+}

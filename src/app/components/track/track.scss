@@ -1,0 +1,395 @@
+.track-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #1e1e1e 0%, #252525 100%);
+  border: 1px solid #333;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  min-height: 80px;
+  overflow: hidden;
+  box-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  &:hover {
+    background: linear-gradient(135deg, #252525 0%, #2a2a2a 100%);
+    border-color: #444;
+    box-shadow: 
+      0 2px 6px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  &.selected {
+    background: linear-gradient(135deg, #2a1f1a 0%, #2d2520 100%);
+    border-color: #ff6b35;
+    border-left: 3px solid #ff6b35;
+    box-shadow: 
+      0 0 0 1px rgba(255, 107, 53, 0.3),
+      0 2px 8px rgba(255, 107, 53, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  &.muted {
+    opacity: 0.6;
+    filter: grayscale(50%);
+  }
+
+  &.solo {
+    border-left: 3px solid #ffcc02;
+    background: linear-gradient(135deg, #2a2519 0%, #2d2620 100%);
+    box-shadow: 
+      0 0 0 1px rgba(255, 204, 2, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  &.armed {
+    border-left: 3px solid #ff3b30;
+    background: linear-gradient(135deg, #2a1919 0%, #2d2020 100%);
+    animation: pulse-arm 2s infinite;
+    box-shadow: 
+      0 0 0 1px rgba(255, 59, 48, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  // Track Header - Ableton style
+  .track-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.2) 100%);
+    border-bottom: 1px solid #404040;
+    min-height: 36px;
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.03);
+
+    .track-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+
+      .track-name {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 500;
+        color: #fff;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 200px;
+      }
+
+      .track-type {
+        font-size: 11px;
+        color: #999;
+        text-transform: uppercase;
+        padding: 2px 6px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        align-self: flex-start;
+
+        &:first-letter {
+          text-transform: uppercase;
+        }
+      }
+
+      .clip-count {
+        font-size: 10px;
+        color: #666;
+      }
+    }    .track-controls {
+      display: flex;
+      gap: 3px;
+
+      .control-btn {
+        width: 22px;
+        height: 22px;
+        border: 1px solid #555;
+        background: linear-gradient(135deg, #333 0%, #3a3a3a 100%);
+        color: #ccc;
+        border-radius: 2px;
+        font-size: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 
+          inset 0 1px 0 rgba(255, 255, 255, 0.1),
+          0 1px 2px rgba(0, 0, 0, 0.3);        &:hover {
+          background: linear-gradient(135deg, #444 0%, #4a4a4a 100%);
+          border-color: #777;
+          box-shadow: 
+            inset 0 1px 0 rgba(255, 255, 255, 0.15),
+            0 1px 3px rgba(0, 0, 0, 0.4);
+        }
+
+        &.active {
+          color: white;
+          border-color: currentColor;
+          box-shadow: 
+            inset 0 1px 0 rgba(255, 255, 255, 0.2),
+            0 0 8px rgba(0, 0, 0, 0.5);
+        }
+
+        &.mute-btn.active {
+          background: linear-gradient(135deg, #ffcc02 0%, #f7b500 100%);
+          border-color: #ffcc02;
+          color: #1a1a1a;
+          text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+        }
+
+        &.solo-btn.active {
+          background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+          border-color: #ff6b35;
+          color: white;
+          text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+        }
+
+        &.arm-btn.active {
+          background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%);
+          color: white;
+          border-color: #F44336;
+          box-shadow: 
+            0 0 0 1px rgba(244, 67, 54, 0.3),
+            0 2px 4px rgba(244, 67, 54, 0.3),
+            0 0 24px rgba(255, 59, 48, 0.5);
+        }
+
+        &.create-clip-btn {
+          background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+          color: white;
+          border-color: #4CAF50;
+          font-weight: bold;
+          font-size: 14px;
+
+          &:hover {
+            background: linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%);
+            transform: translateY(-1px);
+            box-shadow: 
+              0 0 0 1px rgba(76, 175, 80, 0.4),
+              0 4px 8px rgba(76, 175, 80, 0.3),
+              0 0 16px rgba(76, 175, 80, 0.2);
+          }
+
+          &:active {
+            transform: translateY(0);
+          }
+        }
+      }
+    }
+  }
+
+  // Clips Container
+  .clips-container {
+    position: relative;
+    flex: 1;
+    min-height: 40px;
+    background: #1e1e1e;
+  }
+
+  .empty-clips {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #666;
+    font-size: 12px;
+    font-style: italic;
+    pointer-events: none;
+    text-align: center;
+  }
+
+  .clip-creation-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    cursor: crosshair;
+    z-index: 1;
+
+    &:hover {
+      background: rgba(76, 175, 80, 0.05);
+    }
+  }
+
+  // Timeline Grid
+  .timeline-grid {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+    z-index: 0;
+
+    .beat-marker {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: rgba(255, 255, 255, 0.1);
+
+      &.bar {
+        background: rgba(255, 255, 255, 0.2);
+        width: 2px;
+      }
+    }
+  }
+}
+
+// Animations
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes pulse-arm {
+  0%, 100% {
+    border-left-color: #F44336;
+  }
+  50% {
+    border-left-color: #FF5722;
+  }
+}
+
+// Animation for expanding instrument section
+@keyframes slideDown {
+  from {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  to {
+    max-height: 500px;
+    opacity: 1;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+}
+
+// Ableton-style pulse animation for armed tracks
+@keyframes pulse-arm {
+  0%, 100% {
+    box-shadow: 
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      0 0 8px rgba(255, 59, 48, 0.6),
+      0 0 16px rgba(255, 59, 48, 0.3);
+  }
+  50% {
+    box-shadow: 
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      0 0 12px rgba(255, 59, 48, 0.8),
+      0 0 24px rgba(255, 59, 48, 0.5);
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .track-container {
+    .track-header {
+      padding: 6px 8px;
+      min-height: 36px;
+
+      .track-info {
+        .track-name {
+          font-size: 13px;
+          max-width: 150px;
+        }
+
+        .track-type {
+          font-size: 10px;
+        }
+      }
+
+      .track-controls {
+        gap: 2px;
+
+        .control-btn {
+          width: 20px;
+          height: 20px;
+          font-size: 10px;
+        }
+      }
+    }
+
+    .clips-container {
+      min-height: 36px;
+    }
+  }
+}
+
+// Track Type Specific Styles
+.track-container {
+  &[data-instrument-type="drum"] {
+    border-left: 3px solid #9C27B0;
+  }
+
+  &[data-instrument-type="bass"] {
+    border-left: 3px solid #FF5722;
+  }
+
+  &[data-instrument-type="synth"] {
+    border-left: 3px solid #2196F3;
+  }
+
+  &[data-instrument-type="lead"] {
+    border-left: 3px solid #4CAF50;
+  }
+  &[data-instrument-type="pad"] {
+    border-left: 3px solid #607D8B;
+  }
+}
+
+// NUOVO: Instrument Section Styles - Layout migliorato
+.instrument-section {
+  background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+  border-top: 1px solid #404040;
+  padding: 16px;
+  animation: slideDown 0.3s ease-out;
+  min-height: 200px; // Altezza minima garantita
+
+  .instrument-selector-wrapper {
+    margin-bottom: 20px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    border: 1px solid #444;
+  }
+
+  .instrument-controls-wrapper {
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    border: 1px solid #333;
+    max-height: none; // Rimuoviamo la limitazione di altezza
+    min-height: 300px; // Altezza minima per i controlli
+    overflow: visible; // Permettiamo che i dropdown si espandano
+
+    // Custom scrollbar solo se necessario
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: rgba(76, 175, 80, 0.6);
+      border-radius: 3px;
+
+      &:hover {
+        background: rgba(76, 175, 80, 0.8);
+      }
+    }
+  }
+}

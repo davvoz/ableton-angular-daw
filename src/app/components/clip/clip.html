@@ -1,0 +1,88 @@
+<div 
+  class="clip-container"
+  [ngClass]="getClipClasses()"
+  [ngStyle]="clipStyle()"
+  [draggable]="true"
+  (click)="onClipClick($event)"
+  (dblclick)="onClipDoubleClick($event)"
+  (contextmenu)="onClipContextMenu($event)"
+  (mouseenter)="onMouseEnter()"
+  (mouseleave)="onMouseLeave()"
+  (dragstart)="onDragStart($event)"
+  (dragend)="onDragEnd()"
+  [attr.title]="clipData.name + ' (' + formatDuration() + ' beats)'"
+  [attr.aria-label]="'Clip: ' + clipData.name">
+
+  <!-- Clip Header -->
+  <div class="clip-header">
+    <span class="clip-name">{{ clipData.name }}</span>
+    <div class="clip-info">
+      @if (clipData.isLoop) {
+        <span class="loop-indicator" title="Loop enabled">🔁</span>
+      }
+      @if (clipData.isMuted) {
+        <span class="mute-indicator" title="Muted">🔇</span>
+      }
+      @if (clipData.isPlaying) {
+        <span class="play-indicator" title="Playing">▶️</span>
+      }
+    </div>
+  </div>
+
+  <!-- Notes Preview -->
+  @if (hasNotes()) {
+    <div class="notes-preview">
+      @for (note of notesPreview(); track note.left) {
+        <div 
+          class="note-bar"
+          [ngStyle]="{
+            'left': note.left,
+            'width': note.width,
+            'bottom': note.bottom,
+            'height': note.height,
+            'opacity': note.opacity
+          }">
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="empty-clip">
+      <span class="empty-text">Empty</span>
+    </div>
+  }
+
+  <!-- Clip Controls (shown on hover) -->
+  @if (isHovered()) {
+    <div class="clip-controls">
+      <button 
+        class="control-btn mute-btn"
+        (click)="toggleMute(); $event.stopPropagation()"
+        [class.active]="clipData.isMuted"
+        title="Toggle mute">
+        🔇
+      </button>
+      <button 
+        class="control-btn duplicate-btn"
+        (click)="duplicateClip(); $event.stopPropagation()"
+        title="Duplicate clip">
+        📋
+      </button>
+      <button 
+        class="control-btn delete-btn"
+        (click)="deleteClip(); $event.stopPropagation()"
+        title="Delete clip">
+        🗑️
+      </button>
+    </div>
+  }
+
+  <!-- Duration indicator -->
+  <div class="duration-indicator">
+    {{ formatDuration() }}
+  </div>
+
+  <!-- Selection border -->
+  @if (isSelected()) {
+    <div class="selection-border"></div>
+  }
+</div>

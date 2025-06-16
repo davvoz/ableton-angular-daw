@@ -1,0 +1,74 @@
+<!-- TRANSPORT CONTROLS - Layout Migliorato -->
+<div class="transport-container">
+  
+  <!-- SEZIONE 1: Display Principale -->
+  <div class="display-section">
+    <!-- Posizione -->
+    <div class="position-display">
+      <span class="label">POSITION</span>
+      <span class="value">{{ currentTimeDisplay() }}</span>
+    </div>
+    
+    <!-- BPM con controlli chiari -->
+    <div class="bpm-display">
+      <span class="label">BPM</span>
+      <div class="bpm-control">
+        <button class="bpm-down" (click)="setBpm(bpm() - 1)" [disabled]="bpm() <= 80">−</button>
+        <input 
+          type="number" 
+          class="bpm-input"
+          [value]="bpmDisplay()"
+          (input)="setBpm(+$any($event.target).value)"
+          (blur)="validateBpm($event)"
+          min="80" 
+          max="200"
+          step="1">
+        <button class="bpm-up" (click)="setBpm(bpm() + 1)" [disabled]="bpm() >= 200">+</button>
+      </div>
+    </div>
+    
+    <!-- Note attive (se presenti) -->
+    <div class="active-notes" *ngIf="activeNoteCount() > 0">
+      <span class="label">NOTES</span>
+      <span class="value">{{ activeNoteCount() }}</span>
+    </div>
+  </div>
+
+  <!-- SEZIONE 2: Controlli di Trasporto -->
+  <div class="transport-controls">
+    <button class="transport-btn" (click)="skipToStart()" title="Go to Start">⏮</button>
+    <button class="transport-btn record" [class.active]="isRecording()" (click)="record()" title="Record">⏺</button>
+    <button class="transport-btn play-pause primary" 
+            [class.playing]="isPlaying()"
+            (click)="isPlaying() ? pause() : play()" 
+            [title]="isPlaying() ? 'Pause' : 'Play'">
+      {{ isPlaying() ? '⏸' : '▶' }}
+    </button>
+    <button class="transport-btn" (click)="stop()" title="Stop">⏹</button>
+    <button class="transport-btn" (click)="skipToEnd()" title="Go to End">⏭</button>
+  </div>
+
+  <!-- SEZIONE 3: Controlli Secondari -->
+  <div class="secondary-controls">
+    <button class="control-btn loop" 
+            [class.active]="isLooping()" 
+            (click)="toggleLoop()" 
+            title="Loop">
+      LOOP
+    </button>
+    
+    <button class="control-btn metronome" 
+            [class.active]="isMetronomeOn()" 
+            (click)="toggleMetronome()"
+            (wheel)="onMetronomeWheel($event)"
+            [title]="'Metronome ' + (isMetronomeOn() ? 'ON (' + metronomeVolumePercent() + '%)' : 'OFF') + ' - Scroll to adjust volume'">
+      {{ metronomeButtonText() }}
+    </button>
+    
+    <div class="quantization-display">
+      <span class="label">QUANTIZE</span>
+      <span class="value">{{ transport().quantization }}</span>
+    </div>
+  </div>
+  
+</div>

@@ -1,0 +1,71 @@
+<div class="instrument-selector">
+  <h4>🎹 Select Instrument</h4>
+  
+  <div class="selector-container" [class.disabled]="disabled()">
+    <!-- Category-based selection -->
+    <div *ngFor="let category of categories" class="category-section">
+      <h5 class="category-title">{{category}}</h5>
+      
+      <div class="instruments-grid">
+        <div *ngFor="let instrument of getInstrumentsByCategory(category)" 
+             class="instrument-card"
+             [class.selected]="isSelected(instrument.id)"
+             [class.disabled]="disabled()"
+             (click)="selectInstrument(instrument)">
+          
+          <div class="instrument-icon">{{instrument.icon}}</div>
+          <div class="instrument-name">{{instrument.name}}</div>
+          <div class="instrument-type">{{instrument.type}}</div>
+          <div class="instrument-info">
+            <span class="polyphony">{{instrument.polyphony}} voices</span>
+            <span class="cpu">{{(instrument.cpuUsage * 100).toFixed(0)}}% CPU</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick access to all instruments -->
+    <div class="all-instruments-section">
+      <h5 class="category-title">🎛️ All Instruments</h5>
+      
+      <select class="instrument-select"
+              title="Select instrument"
+              [disabled]="disabled()"
+              [value]="selectedInstrumentId() || ''"
+              (change)="onSelectChange($event)">
+        <option value="">-- Select Instrument --</option>
+        <option *ngFor="let instrument of instruments" 
+                [value]="instrument.id">
+          {{instrument.icon}} {{instrument.name}} ({{instrument.type}})
+        </option>
+      </select>
+    </div>
+
+    <!-- Selected instrument info -->
+    <div *ngIf="selectedInstrument" class="selected-info">
+      <h5>📋 Selected Instrument</h5>
+      <div class="selected-details">
+        <div class="detail-row">
+          <span class="label">Name:</span>
+          <span class="value">{{selectedInstrument.icon}} {{selectedInstrument.name}}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Type:</span>
+          <span class="value">{{selectedInstrument.type}}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Category:</span>
+          <span class="value">{{selectedInstrument.category}}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Description:</span>
+          <span class="value">{{selectedInstrument.description}}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Parameters:</span>
+          <span class="value">{{selectedInstrument.parameters.size}} controls</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

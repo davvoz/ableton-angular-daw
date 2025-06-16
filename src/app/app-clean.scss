@@ -1,0 +1,202 @@
+// 🎛️ ABLETON LIVE MAIN APPLICATION - EXACT REPLICA
+.daw-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background: #1a1a1a;
+  color: #d0d0d0;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 11px;
+  overflow: hidden;
+}
+
+// 📤 HEADER - ABLETON STYLE
+.daw-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #303030;
+  border-bottom: 1px solid #404040;
+  padding: 6px 12px;
+  height: 60px;
+  flex-shrink: 0;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    .logo {
+      .logo-text {
+        font-size: 16px;
+        font-weight: 600;
+        color: #ff6b35;
+        line-height: 1;
+      }
+
+      .logo-subtitle {
+        font-size: 9px;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+    }
+  }
+
+  .header-center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .cpu-monitor {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      background: #404040;
+      border-radius: 4px;
+      font-size: 9px;
+      
+      .cpu-label {
+        color: #888;
+      }
+      
+      .cpu-value {
+        color: #fff;
+        font-weight: 600;
+      }
+    }
+
+    .view-toggle {
+      background: #404040;
+      border: 1px solid #555;
+      color: #d0d0d0;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 10px;
+      transition: all 0.1s;
+
+      &:hover {
+        background: #4a4a4a;
+      }
+
+      &.active {
+        background: #ff6b35;
+        border-color: #ff6b35;
+        color: #000;
+      }
+    }
+  }
+}
+
+// 🎛️ MAIN CONTENT AREA
+.daw-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+
+// 🎵 SESSION/ARRANGEMENT AREA
+.daw-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+// 🎹 PIANO ROLL PANEL (BOTTOM)
+.piano-roll-panel {
+  height: 300px;
+  border-top: 1px solid #404040;
+  background: #1a1a1a;
+  flex-shrink: 0;
+  
+  &.hidden {
+    height: 0;
+    overflow: hidden;
+  }
+}
+
+// 📊 DETAIL VIEW (RIGHT PANEL)
+.detail-panel {
+  width: 250px;
+  background: #2a2a2a;
+  border-left: 1px solid #404040;
+  flex-shrink: 0;
+  
+  &.hidden {
+    width: 0;
+    overflow: hidden;
+  }
+  
+  .detail-header {
+    background: #303030;
+    border-bottom: 1px solid #404040;
+    padding: 8px 12px;
+    
+    .detail-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: #ff6b35;
+      text-transform: uppercase;
+    }
+  }
+  
+  .detail-content {
+    padding: 12px;
+    height: calc(100% - 40px);
+    overflow-y: auto;
+  }
+}
+
+// 🎛️ TRANSPORT CONTROLS
+.transport-bar {
+  background: #303030;
+  border-top: 1px solid #404040;
+  padding: 8px 12px;
+  flex-shrink: 0;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// 🎨 SCROLLBARS
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #2a2a2a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+// 🎛️ GLOBAL OVERRIDES
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}

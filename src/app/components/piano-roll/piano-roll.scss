@@ -1,0 +1,508 @@
+// Piano Roll Editor Styling - Completamente ripristinato
+.piano-roll-container {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  border-radius: 12px;
+  border: 1px solid #333;
+  color: #ffffff;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+
+  // Header Controls
+  .piano-roll-header {
+    background: linear-gradient(135deg, #2a2a2a 0%, #333 100%);
+    border-bottom: 1px solid #444;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+    h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: #4CAF50;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+
+      .zoom-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .control-btn {
+          background: linear-gradient(135deg, #333, #444);
+          color: #fff;
+          border: 1px solid #555;
+          border-radius: 6px;
+          padding: 8px 12px;
+          font-size: 14px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          &:hover {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            border-color: #4CAF50;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+          }
+
+          &:active {
+            transform: translateY(0);
+          }
+        }
+
+        .zoom-level {
+          font-weight: 600;
+          color: #4CAF50;
+          min-width: 50px;
+          text-align: center;
+        }
+      }
+
+      .grid-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .snap-btn {
+          &.active {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            border-color: #4CAF50;
+          }
+        }
+
+        .grid-info {
+          font-size: 12px;
+          color: #ccc;
+          min-width: 40px;
+        }
+      }
+
+      .clip-info {
+        text-align: right;
+
+        .clip-name {
+          display: block;
+          font-weight: 600;
+          color: #4CAF50;
+        }
+
+        .clip-length {
+          display: block;
+          font-size: 12px;
+          color: #ccc;
+        }
+      }
+    }
+  }
+
+  // Main Editor Area
+  .piano-roll-editor {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+
+    // Piano Keys
+    .piano-keys {
+      width: 80px;
+      background: linear-gradient(135deg, #2a2a2a 0%, #333 100%);
+      border-right: 1px solid #444;
+      overflow-y: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
+
+      .keys-container {
+        position: relative;
+        height: 1760px; // 88 keys * 20px
+      }
+
+      .piano-key {
+        position: absolute;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding-right: 12px;
+        border-bottom: 1px solid #333;
+        font-size: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.1s ease;
+
+        &.white-key {
+          background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+          color: #333;
+
+          &:hover {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: #fff;
+          }
+
+          &.active {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: #fff;
+            box-shadow: inset 2px 0 0 #fff;
+          }
+        }
+
+        &.black-key {
+          background: linear-gradient(135deg, #2d2d2d, #1a1a1a);
+          color: #ccc;
+
+          &:hover {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: #fff;
+          }
+
+          &.active {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: #fff;
+            box-shadow: inset 2px 0 0 #fff;
+          }
+        }
+
+        .key-label {
+          font-weight: bold;
+        }
+      }
+    }
+
+    // Grid and Notes Area
+    .grid-area {
+      flex: 1;
+      position: relative;
+      overflow: auto;
+      background: linear-gradient(135deg, #1e1e1e, #252525);
+      border: 1px solid #333;
+
+      .grid-container {
+        position: relative;
+        background: #1a1a1a;        .grid-line {
+          position: absolute;
+          pointer-events: none;
+          z-index: 1; // Sotto tutto
+
+          &.vertical {
+            top: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.1);
+            width: 1px;
+
+            &.beat-line {
+              background: rgba(255, 255, 255, 0.2);
+              width: 1px;
+            }
+
+            &.bar-line {
+              background: rgba(255, 255, 255, 0.3);
+              width: 2px;
+            }
+          }
+
+          &.horizontal {
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.05);
+
+            &.black-key-line {
+              background: rgba(255, 255, 255, 0.08);
+            }
+          }
+        }        .grid-cells {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 100; // MOLTO ALTO per intercettare i clic
+
+          .grid-row {
+            position: absolute;
+            width: 100%;
+            background: rgba(255, 0, 0, 0.1); // DEBUG: Sfondo rosso trasparente per vedere le celle
+            cursor: crosshair;
+            border: 1px solid rgba(255, 0, 0, 0.3); // DEBUG: Bordo rosso per vedere le celle
+
+            &:hover {
+              background: rgba(76, 175, 80, 0.4);
+              border: 1px solid rgba(76, 175, 80, 0.8);
+            }
+          }
+        }.notes-layer {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 200; // Sopra le celle della griglia ma permettiamo agli eventi di passare
+
+          .midi-note {
+            position: absolute;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            border: 1px solid #2e7d32;
+            border-radius: 4px;
+            cursor: move;
+            transition: all 0.2s ease;
+            min-width: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+
+            &:hover {
+              background: linear-gradient(135deg, #66BB6A, #4CAF50);
+              box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+              transform: translateY(-1px);
+            }
+
+            &.selected {
+              background: linear-gradient(135deg, #FF9800, #F57C00);
+              border-color: #E65100;
+              box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.5);
+            }
+
+            &.dragging {
+              opacity: 0.8;
+              z-index: 1000;
+              transform: scale(1.05);
+            }
+
+            .note-content {
+              padding: 2px 6px;
+              font-size: 10px;
+              font-weight: 600;
+              color: #fff;
+              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+              white-space: nowrap;
+              overflow: hidden;
+
+              .note-name {
+                display: inline-block;
+              }
+
+              .note-velocity {
+                display: inline-block;
+                margin-left: 4px;
+                opacity: 0.8;
+                font-size: 8px;
+              }
+            }
+
+            .resize-handle {
+              position: absolute;
+              top: 0;
+              bottom: 0;
+              width: 4px;
+              cursor: ew-resize;
+              background: transparent;
+              opacity: 0;
+              transition: opacity 0.2s ease;
+
+              &.left {
+                left: 0;
+              }
+
+              &.right {
+                right: 0;
+              }
+
+              &:hover {
+                background: rgba(255, 255, 255, 0.3);
+              }
+            }
+
+            &:hover .resize-handle {
+              opacity: 1;
+            }
+
+            .velocity-handle {
+              position: absolute;
+              bottom: -3px;
+              left: 50%;
+              transform: translateX(-50%);
+              width: 8px;
+              height: 6px;
+              background: rgba(255, 255, 255, 0.6);
+              border-radius: 2px;
+              cursor: ns-resize;
+              opacity: 0;
+              transition: opacity 0.2s ease;
+            }
+
+            &:hover .velocity-handle {
+              opacity: 1;
+            }
+          }
+        }
+
+        .playhead-layer {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          pointer-events: none;
+          z-index: 500;
+
+          .playhead-line {
+            position: absolute;
+            top: 0;
+            width: 3px;
+            background: #FF4444;
+            box-shadow: 0 0 8px rgba(255, 68, 68, 0.8);
+            border-radius: 1px;
+
+            .playhead-head {
+              position: absolute;
+              top: -4px;
+              left: -2px;
+              width: 7px;
+              height: 8px;
+              background: #FF4444;
+              border-radius: 2px;
+            }
+
+            &.playing {
+              box-shadow: 
+                0 0 12px rgba(255, 68, 68, 1),
+                0 0 24px rgba(255, 68, 68, 0.6);
+              background: #FF6666;
+
+              .playhead-head {
+                background: #FF6666;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Bottom Controls
+  .piano-roll-bottom-controls {
+    background: linear-gradient(135deg, #2a2a2a 0%, #333 100%);
+    border-top: 1px solid #444;
+    padding: 12px 20px;
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    flex-wrap: wrap;
+    min-height: 60px;
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      label {
+        font-size: 12px;
+        color: #ccc;
+        font-weight: 600;
+        min-width: 60px;
+      }
+
+      .control-select {
+        background: #2a2a2a;
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 12px;
+
+        &:focus {
+          outline: none;
+          border-color: #4CAF50;
+        }
+      }
+
+      .velocity-slider {
+        width: 100px;
+        margin: 0 8px;
+      }
+
+      .velocity-value {
+        font-size: 12px;
+        color: #4CAF50;
+        min-width: 30px;
+        text-align: center;
+      }
+
+      .action-btn {
+        background: linear-gradient(135deg, #333, #444);
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 4px;
+        padding: 6px 12px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: linear-gradient(135deg, #4CAF50, #45a049);
+          border-color: #4CAF50;
+        }
+
+        &.danger {
+          &:hover {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            border-color: #f44336;
+          }
+        }
+      }
+    }
+  }
+
+  // Responsive adjustments
+  @media (max-width: 768px) {
+    .piano-roll-header {
+      padding: 12px 16px;
+      
+      .header-controls {
+        gap: 16px;
+      }
+    }
+
+    .piano-keys {
+      width: 60px;
+    }
+
+    .piano-roll-bottom-controls {
+      padding: 8px 16px;
+      gap: 16px;
+    }
+  }
+}
+
+// Global scrollbar styling for piano roll
+.piano-roll-container {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+  }
+}

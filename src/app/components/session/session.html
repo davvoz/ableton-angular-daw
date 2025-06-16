@@ -1,0 +1,115 @@
+<!-- 🎛️ ABLETON LIVE SESSION VIEW - EXACT REPLICA -->
+<div class="session-container">  <!-- 📤 HEADER -->
+  <div class="session-header">
+    <div class="header-section track-controls">
+      <div class="track-header-label">TRACKS</div>
+      <button class="add-track-btn" (click)="toggleAddTrackMenu()" [class.active]="showAddTrackMenu()" title="Add Track">
+        <span class="plus-icon">+</span>
+        <span class="label">Add Track</span>
+      </button>
+      @if (showAddTrackMenu()) {
+        <div class="add-track-menu">
+          <button class="track-type-btn synth" (click)="addTrackAndClose('synth')">
+            <span class="icon">🎹</span>
+            <span class="name">Synth</span>
+          </button>
+          <button class="track-type-btn drum" (click)="addTrackAndClose('drum')">
+            <span class="icon">🥁</span>
+            <span class="name">Drums</span>
+          </button>
+          <button class="track-type-btn bass" (click)="addTrackAndClose('bass')">
+            <span class="icon">🎸</span>
+            <span class="name">Bass</span>
+          </button>
+          <button class="track-type-btn lead" (click)="addTrackAndClose('lead')">
+            <span class="icon">🎺</span>
+            <span class="name">Lead</span>
+          </button>
+          <button class="track-type-btn pad" (click)="addTrackAndClose('pad')">
+            <span class="icon">🌊</span>
+            <span class="name">Pad</span>
+          </button>
+        </div>
+      }    </div>
+    @if (visibleTracks().length > 0) {
+      <div class="header-section scene-controls">
+        <div class="scene-header-label">SCENES</div>
+        <button class="add-scene-btn" (click)="addScene()" title="Add Scene">
+          <span class="plus-icon">+</span>
+          <span class="label">Add Scene</span>
+        </button>
+      </div>
+    }
+  </div>  <!-- 🎛️ MAIN GRID -->
+  <div class="session-grid">
+    <!-- Empty corner cell -->
+    <div class="corner-cell"></div>
+    
+    <!-- 📋 TRACKS ROW (TOP) - HORIZONTAL -->
+    <div class="tracks-column">
+      @for (track of visibleTracks(); track track.id) {
+        <div class="track-header" 
+             [class.selected]="isTrackSelected(track.id)" 
+             [style.--track-color]="track.color"
+             (click)="onTrackSelect(track.id, $event)" 
+             (dblclick)="onTrackDoubleClick(track.id)">
+          <div class="track-info">
+            <div class="track-name" [title]="track.name">{{ track.name }}</div>
+            <div class="track-type">{{ track.instrumentType || 'Track' }}</div>
+          </div>
+          <div class="track-controls">
+            <button class="track-mute-btn" 
+                    [class.active]="track.isMuted" 
+                    (click)="toggleTrackMute(track.id); $event.stopPropagation()" 
+                    title="Mute">M</button>
+            <button class="track-solo-btn" 
+                    [class.active]="track.isSolo" 
+                    (click)="toggleTrackSolo(track.id); $event.stopPropagation()" 
+                    title="Solo">S</button>
+            <button class="track-arm-btn" 
+                    [class.active]="track.isArmed" 
+                    (click)="toggleTrackArm(track.id); $event.stopPropagation()" 
+                    title="Arm for Recording">●</button>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- 🎬 SCENES COLUMN (LEFT) - VERTICAL -->
+    <div class="scenes-row">
+      @for (sceneIndex of sceneIndices(); track sceneIndex) {
+        <div class="scene-header" (click)="playScene(sceneIndex)">
+          <div class="scene-trigger" 
+               [class.active]="isScenePlaying(sceneIndex)"
+               [title]="'Scene ' + (sceneIndex + 1)">
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- 🎵 CLIPS GRID (MAIN AREA) - NOW VERTICAL TRACKS -->
+    <div class="clips-grid">
+      @for (track of visibleTracks(); track track.id; let trackIndex = $index) {
+        <div class="clips-column">
+          @for (sceneIndex of sceneIndices(); track sceneIndex) {
+            <div class="clip-slot" 
+                 [class.empty]="!getClipAt(track.id, sceneIndex)"
+                 (click)="onClipSlotClick(track.id, sceneIndex, $event)"
+                 (dblclick)="onClipSlotDoubleClick(track.id, sceneIndex)"
+                 [title]="!getClipAt(track.id, sceneIndex) ? 'Double-click to create clip' : ''">
+              @if (getClipAt(track.id, sceneIndex); as clip) {
+                <div class="clip" 
+                     [class.playing]="isClipPlaying(clip.id)"
+                     [class.selected]="isClipSelected(clip.id)"
+                     [style.background]="clip.color || track.color">
+                  {{ clip.name }}
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>
+

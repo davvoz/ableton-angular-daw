@@ -1,0 +1,253 @@
+// TRANSPORT CONTROLS - Ableton Live Style
+.transport-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #2a2a2a;
+  color: #ffffff;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  padding: 0 8px;
+  height: 60px;
+  border-radius: 4px;
+
+  // SEZIONE 1: Display Principale
+  .display-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .position-display,
+    .bpm-display,
+    .active-notes {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+
+      .label {
+        font-size: 8px;
+        color: #888;
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+      }
+
+      .value {
+        font-size: 12px;
+        font-weight: 600;
+        font-family: 'Courier New', monospace;
+        color: #fff;
+        background: #1e1e1e;
+        padding: 4px 8px;
+        border-radius: 2px;
+        border: 1px solid #3a3a3a;
+        min-width: 60px;
+        text-align: center;
+      }
+    }
+
+    .bpm-display {
+      .bpm-control {
+        display: flex;
+        align-items: center;
+        background: #1e1e1e;
+        border: 1px solid #3a3a3a;
+        border-radius: 2px;
+        overflow: hidden;
+
+        .bpm-down,
+        .bpm-up {
+          background: #333;
+          border: none;
+          color: #ccc;
+          font-size: 12px;
+          font-weight: bold;
+          width: 20px;
+          height: 28px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+
+          &:hover:not(:disabled) {
+            background: #444;
+            color: #fff;
+          }
+
+          &:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+          }
+        }
+
+        .bpm-input {
+          background: transparent;
+          border: none;
+          color: #fff;
+          font-size: 12px;
+          font-weight: 600;
+          font-family: 'Courier New', monospace;
+          text-align: center;
+          width: 40px;
+          height: 28px;
+          outline: none;
+
+          &:focus {
+            background: #444;
+          }
+        }
+      }
+    }
+
+    .active-notes {
+      .value {
+        color: #ffa500;
+      }
+    }
+  }
+
+  // SEZIONE 2: Controlli di Trasporto
+  .transport-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .transport-btn {
+      background: #404040;
+      border: 1px solid #555;
+      border-radius: 3px;
+      color: #fff;
+      font-size: 14px;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      &:hover {
+        background: #505050;
+        border-color: #666;
+      }
+
+      &:active {
+        background: #555;
+      }
+
+      &.primary {
+        background: #00aa44;
+        border-color: #00cc55;
+        width: 42px;
+        height: 42px;
+        font-size: 16px;
+
+        &:hover {
+          background: #00bb55;
+        }
+
+        &.playing {
+          background: #ff6600;
+          border-color: #ff7700;
+
+          &:hover {
+            background: #ff7700;
+          }
+        }
+      }
+
+      &.record {
+        &.active {
+          background: #cc0000;
+          border-color: #ee0000;
+          animation: pulse 1.5s infinite;
+
+          &:hover {
+            background: #dd0000;
+          }
+        }
+      }
+    }
+  }
+
+  // SEZIONE 3: Controlli Secondari
+  .secondary-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .control-btn {
+      background: #404040;
+      border: 1px solid #555;
+      border-radius: 2px;
+      color: #ccc;
+      font-size: 9px;
+      font-weight: 600;
+      padding: 4px 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+
+      &:hover {
+        background: #505050;
+        border-color: #666;
+        color: #fff;
+      }
+
+      &.active {
+        background: #ff6b35;
+        border-color: #ff8c55;
+        color: white;
+      }
+
+      &.loop.active {
+        background: #00aa44;
+        border-color: #00cc55;
+      }
+
+      &.metronome.active {
+        background: #2196F3;
+        border-color: #42A5F5;
+      }
+    }
+
+    .quantization-display {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+
+      .label {
+        font-size: 8px;
+        color: #888;
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+      }
+
+      .value {
+        font-size: 10px;
+        font-weight: 600;
+        color: #fff;
+        background: #1e1e1e;
+        padding: 2px 6px;
+        border-radius: 2px;
+        border: 1px solid #3a3a3a;
+        min-width: 30px;
+        text-align: center;
+      }
+    }
+  }
+}
+
+// Pulse animation for record button
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(204, 0, 0, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(204, 0, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(204, 0, 0, 0);
+  }
+}

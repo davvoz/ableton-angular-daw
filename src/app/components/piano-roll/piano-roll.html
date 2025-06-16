@@ -1,0 +1,214 @@
+<div class="piano-roll-container">
+  <!-- Header Controls -->
+  <div class="piano-roll-header">
+    <h3>Piano Roll Editor</h3>
+    
+    <div class="header-controls">
+      <!-- Zoom Controls -->
+      <div class="zoom-controls">
+        <button 
+          class="control-btn" 
+          (click)="zoomOut()"
+          [disabled]="zoomLevel() <= 0.25">
+          -
+        </button>
+        <span class="zoom-level">{{ (zoomLevel() * 100) | number:'1.0-0' }}%</span>
+        <button 
+          class="control-btn" 
+          (click)="zoomIn()"
+          [disabled]="zoomLevel() >= 4.0">
+          +
+        </button>
+        <button 
+          class="control-btn" 
+          (click)="resetZoom()">
+          Reset
+        </button>
+      </div>
+
+      <!-- Grid Controls -->
+      <div class="grid-controls">
+        <button 
+          class="control-btn snap-btn"
+          [class.active]="snapToGridEnabled()"
+          (click)="toggleSnapToGrid()">
+          Snap
+        </button>
+        <span class="grid-info">1/{{ gridSubdivision() }}</span>
+      </div>
+
+      <!-- Clip Info -->
+      <div class="clip-info" *ngIf="currentClip()">
+        <span class="clip-name">{{ currentClip()?.name || 'Untitled Clip' }}</span>
+        <span class="clip-length">{{ totalBeats() }} beats</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Editor Area -->
+  <div class="piano-roll-editor">    <!-- Piano Keys -->
+    <div class="piano-keys" #pianoKeysContainer (scroll)="onPianoKeysScroll($event)">
+      <div class="keys-container">
+        <div 
+          *ngFor="let key of pianoKeys(); trackBy: trackByNote"
+          class="piano-key"
+          [class.white-key]="!key.isBlack"
+          [class.black-key]="key.isBlack"
+          [style.top.px]="key.keyIndex * keyHeight()"
+          [style.height.px]="keyHeight()"
+          (click)="onPianoKeyClick(key.note)">
+          <span class="key-label">{{ key.noteName }}</span>
+        </div>
+      </div>
+    </div>    <!-- Grid and Notes Area -->
+    <div 
+      class="grid-area"
+      [style.cursor]="dragCursorStyle()"
+      (scroll)="onGridScroll($event)"
+      (click)="onGridAreaClick($event)"
+      #gridArea>
+        <div 
+        class="grid-container"
+        [style.width.px]="totalWidth()"
+        [style.height.px]="pianoKeys().length * keyHeight()">        <!-- Grid Cells for Note Creation (deve essere SOPRA le linee per intercettare i clic) -->
+        <div class="grid-cells">
+          <div 
+            *ngFor="let key of pianoKeys(); trackBy: trackByNote"
+            class="grid-row"
+            [style.top.px]="key.keyIndex * keyHeight()"
+            [style.height.px]="keyHeight()"
+            [attr.data-note]="key.note"
+            (click)="onGridClick($event, key.note)"
+            title="Click to create note {{ key.noteName }}">
+          </div>
+        </div>
+        
+        <!-- Vertical Grid Lines -->
+        <div 
+          *ngFor="let line of verticalGridLines(); trackBy: trackByGridLine"
+          class="grid-line vertical"
+          [class.beat-line]="line.isOnBeat"
+          [class.bar-line]="line.isOnBar"
+          [style.left.px]="line.position">
+        </div>        <!-- Horizontal Grid Lines -->
+        <div 
+          *ngFor="let key of pianoKeys(); trackBy: trackByNote"
+          class="grid-line horizontal"
+          [class.black-key-line]="key.isBlack"
+          [style.top.px]="key.keyIndex * keyHeight()"
+          [style.height.px]="1">
+        </div>
+
+        <!-- Notes Layer -->
+        <div class="notes-layer">
+          <div 
+            *ngFor="let note of clipNotes(); trackBy: trackByNoteId"
+            class="midi-note"
+            [class.selected]="isNoteSelected(note.id)"
+            [class.dragging]="isDragging() && dragStartNote()?.id === note.id"
+            [style.left.px]="getNotePosition(note).left"
+            [style.top.px]="getNotePosition(note).top"
+            [style.width.px]="getNotePosition(note).width"
+            [style.height.px]="getNotePosition(note).height"
+            (mousedown)="onNoteMouseDown(note, $event)"
+            (dblclick)="onNoteDoubleClick(note, $event)">
+            
+            <div class="note-content">
+              <span class="note-name">{{ note.noteName }}</span>
+              <span class="note-velocity">{{ note.velocity }}</span>
+            </div>
+
+            <!-- Resize Handles -->
+            <div 
+              class="resize-handle left"
+              (mousedown)="onResizeStart(note, 'left', $event)">
+            </div>
+            <div 
+              class="resize-handle right"
+              (mousedown)="onResizeStart(note, 'right', $event)">
+            </div>
+
+            <!-- Velocity Handle -->
+            <div 
+              class="velocity-handle"
+              (mousedown)="onResizeStart(note, 'velocity', $event)">
+            </div>
+          </div>
+        </div>
+
+        <!-- Playhead Layer -->
+        <div class="playhead-layer" *ngIf="showPlayhead()">
+          <div 
+            class="playhead-line"
+            [class.playing]="isPlaying()"
+            [style.left.px]="playheadPosition()"
+            [style.height.px]="pianoKeys().length * keyHeight()">
+            <div class="playhead-head"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Controls -->
+  <div class="piano-roll-bottom-controls">
+    <!-- Quantize Control -->
+    <div class="control-group">
+      <label>Quantize:</label>      <select 
+        class="control-select"
+        title="Select quantize value"
+        (change)="onQuantizeChange($event)">
+        <option value="1">1/1</option>
+        <option value="2">1/2</option>
+        <option value="4">1/4</option>
+        <option value="8">1/8</option>
+        <option value="16" selected>1/16</option>
+        <option value="32">1/32</option>
+      </select>
+    </div>
+
+    <!-- Velocity Control -->
+    <div class="control-group">
+      <label>Velocity:</label>
+      <input 
+        type="range"
+        class="velocity-slider"
+        min="1"
+        max="127"
+        value="100"
+        (input)="onVelocityChange($event)">
+      <span class="velocity-value">100</span>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="control-group">
+      <button 
+        class="action-btn"
+        (click)="quantizeSelectedNotes()"
+        [disabled]="selectedNotes().length === 0">
+        Quantize Selected
+      </button>
+      
+      <button 
+        class="action-btn"
+        (click)="duplicateSelectedNotes()"
+        [disabled]="selectedNotes().length === 0">
+        Duplicate
+      </button>
+      
+      <button 
+        class="action-btn danger"
+        (click)="deleteSelectedNotes()"
+        [disabled]="selectedNotes().length === 0">
+        Delete Selected
+      </button>
+    </div>    <!-- Transport Info -->
+    <div class="control-group" *ngIf="isPlaying()">
+      <label>BPM:</label>
+      <span class="velocity-value">{{ bpm() }}</span>
+      
+      <label>Loop:</label>
+      <span class="velocity-value">{{ isLooping() ? 'ON' : 'OFF' }}</span>
+    </div>
+  </div>
+</div>

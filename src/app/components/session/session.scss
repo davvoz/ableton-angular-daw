@@ -1,0 +1,540 @@
+// 🎛️ ABLETON LIVE SESSION VIEW - EXACT REPLICA
+.session-container {
+  height: 100%;
+  background: #1a1a1a;
+  color: #d0d0d0;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 11px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  position: relative; // Added to allow absolute positioned menus
+}
+
+// 📤 HEADER ABLETON STYLE
+.session-header {  background: #303030;
+  border-bottom: 1px solid #404040;
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative; // Added for proper menu positioning
+  overflow: visible; // Allow menu to overflow
+  z-index: 100; // Make sure header is above grid content
+
+  .header-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative; // Added for menu positioning
+
+    &.transport-section {
+      flex: 1;
+      justify-content: center;
+      padding: 0 16px;
+      
+      app-transport {
+        width: 100%;
+        max-width: 800px;
+      }
+    }
+
+    .track-header-label,
+    .scene-header-label {
+      color: #ff6b35;
+      font-weight: 600;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .add-track-btn,
+    .add-scene-btn {
+      background: #4CAF50;
+      border: none;
+      border-radius: 2px;
+      color: white;
+      padding: 4px 8px;
+      font-size: 10px;
+      cursor: pointer;
+      transition: background 0.1s;
+
+      &:hover {
+        background: #66BB6A;
+      }
+
+      .plus-icon {
+        margin-right: 4px;
+      }
+    }
+  }
+
+  .track-controls {
+    position: relative;
+
+    .add-track-btn {
+      background: #4CAF50;
+      border: none;
+      border-radius: 2px;
+      color: white;
+      padding: 4px 8px;
+      font-size: 10px;
+      cursor: pointer;
+      transition: background 0.1s;
+
+      &:hover {
+        background: #66BB6A;
+      }
+
+      &.active {
+        background: #66BB6A;
+      }
+
+      .plus-icon {
+        margin-right: 4px;
+      }
+    }
+  }  .add-track-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #383838;
+    border: 1px solid #555;
+    border-radius: 4px;
+    min-width: 150px;
+    z-index: 1000;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    margin-top: 2px;
+
+    .track-type-btn {
+      width: 100%;
+      padding: 8px 12px;
+      background: none;
+      border: none;
+      color: #d0d0d0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      transition: background 0.1s;
+
+      &:hover {
+        background: #4a4a4a;
+      }
+
+      .icon {
+        font-size: 14px;
+      }
+
+      &.synth .icon {
+        color: #4CAF50;
+      }
+
+      &.drum .icon {
+        color: #FF5722;
+      }
+
+      &.bass .icon {
+        color: #2196F3;
+      }
+
+      &.lead .icon {
+        color: #FF9800;
+      }
+
+      &.pad .icon {
+        color: #9C27B0;
+      }
+    }
+  }
+}
+
+// 🎛️ MAIN GRID LAYOUT - ABLETON STYLE
+.session-grid {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  grid-template-rows: 80px 1fr;
+  height: 100%;
+  background: #1a1a1a;
+  overflow: hidden;
+  gap: 1px;
+  
+  // Grid areas:
+  // [scene-corner] [tracks-row]
+  // [scenes-col]   [clips-grid]
+}
+
+// 📋 TRACKS ROW (TOP) - HORIZONTAL LAYOUT
+.tracks-column {
+  grid-column: 2;
+  grid-row: 1;
+  background: #2a2a2a;
+  border-bottom: 1px solid #404040;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+
+  .track-header {
+    min-width: 140px;
+    width: 140px;
+    height: 100%;
+    border-right: 1px solid #404040;
+    padding: 8px 4px; // Reduced horizontal padding
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.1s;
+
+    &:hover {
+      background: #353535;
+    }
+
+    &.selected {
+      background: #ff6b35;
+      color: #000;
+
+      .track-info .track-name {
+        color: #000;
+        font-weight: 600;
+      }
+    }
+
+    .track-info {
+      text-align: center;
+
+      .track-name {
+        font-weight: 500;
+        font-size: 11px;
+        color: #e0e0e0;
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 130px; // Adjusted for new padding
+      }
+
+      .track-type {
+        font-size: 9px;
+        color: #888;
+        text-transform: uppercase;
+      }
+    }
+
+    .track-controls {
+      display: flex;
+      gap: 2px;
+      margin-top: 4px;
+
+      .track-mute-btn,
+      .track-solo-btn,
+      .track-arm-btn {
+        width: 18px;
+        height: 18px;
+        border: 1px solid #555;
+        background: #333;
+        color: #aaa;
+        font-size: 8px;
+        font-weight: bold;
+        border-radius: 2px;
+        cursor: pointer;
+        transition: all 0.1s;
+
+        &:hover {
+          border-color: #777;
+        }
+
+        &.active {
+          &.track-mute-btn {
+            background: #ff6b35;
+            border-color: #ff6b35;
+            color: #000;
+          }
+
+          &.track-solo-btn {
+            background: #ffeb3b;
+            border-color: #ffeb3b;
+            color: #000;
+          }
+
+          &.track-arm-btn {
+            background: #f44336;
+            border-color: #f44336;
+            color: #fff;
+          }
+        }
+      }
+    }
+  }
+}
+
+// 🎬 SCENES COLUMN (LEFT) - VERTICAL LAYOUT 
+.scenes-row {
+  grid-column: 1;
+  grid-row: 2;
+  background: #2a2a2a;
+  border-right: 1px solid #404040;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  .scene-header {
+    min-height: 60px;
+    height: 60px;
+    width: 100%;
+    border-bottom: 1px solid #404040;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.1s;
+
+    &:hover {
+      background: #353535;
+    }
+
+    .scene-trigger {
+      width: 16px;
+      height: 16px;
+      background: #555;
+      border: 1px solid #777;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.1s;
+
+      &:hover {
+        background: #777;
+      }
+
+      &.active {
+        background: #ff6b35;
+        border-color: #ff6b35;
+      }
+    }
+  }
+}
+
+// 🎵 CLIPS GRID (MAIN AREA) - GRID LAYOUT
+.clips-grid {
+  grid-column: 2;
+  grid-row: 2;
+  background: #1a1a1a;
+  overflow: auto;
+  display: flex;
+  flex-direction: row;
+
+  .clips-column {
+    min-width: 140px;
+    width: 140px;
+    border-right: 1px solid #404040; // Match track border color
+    display: flex;
+    flex-direction: column;
+
+    .clip-slot {
+      min-height: 60px;
+      height: 60px;
+      width: 100%;
+      border-bottom: 1px solid #2a2a2a;
+      position: relative;
+      cursor: pointer;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      &.empty {
+        border: 1px dashed rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.02);
+        position: relative;
+        transition: all 0.2s ease;
+        
+        &:hover {
+          background: rgba(76, 175, 80, 0.1);
+          border-color: rgba(76, 175, 80, 0.3);
+          
+          &::after {
+            content: '+ Click to create clip';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 9px;
+            color: rgba(76, 175, 80, 0.8);
+            font-weight: 500;
+            pointer-events: none;
+            white-space: nowrap;
+          }
+        }
+        
+        &::before {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 12px;
+          height: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 2px;
+          background: rgba(255, 255, 255, 0.05);
+          transition: all 0.2s ease;
+        }
+        
+        &:hover::before {
+          border-color: rgba(76, 175, 80, 0.6);
+          background: rgba(76, 175, 80, 0.15);
+          width: 16px;
+          height: 16px;
+        }
+      }
+
+      .clip {
+        position: absolute;
+        top: 4px;
+        left: 4px;
+        right: 4px;
+        bottom: 4px;
+        background: linear-gradient(135deg, #4CAF50, #45a049);
+        border: 1px solid #66BB6A;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #000;
+        font-weight: 600;
+        font-size: 10px;
+        transition: all 0.1s;
+        text-align: center;
+        padding: 2px;
+
+        &:hover {
+          transform: scale(1.02);
+          box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        }
+
+        &.playing {
+          animation: clipPulse 1s infinite;
+        }
+
+        &.selected {
+          border-color: #ff6b35;
+          box-shadow: 0 0 0 2px #ff6b35;
+        }
+      }
+    }
+  }
+}
+
+// 🔲 CORNER CELL (TOP-LEFT)
+.corner-cell {
+  grid-column: 1;
+  grid-row: 1;
+  background: #303030;
+  border-bottom: 1px solid #404040;
+  border-right: 1px solid #404040;
+}
+
+// 🎨 ANIMATIONS
+@keyframes clipPulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+// 📱 SCROLLBARS STYLING
+.tracks-column::-webkit-scrollbar,
+.clips-grid::-webkit-scrollbar,
+.scenes-row::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.tracks-column::-webkit-scrollbar-track,
+.clips-grid::-webkit-scrollbar-track,
+.scenes-row::-webkit-scrollbar-track {
+  background: #2a2a2a;
+}
+
+.tracks-column::-webkit-scrollbar-thumb,
+.clips-grid::-webkit-scrollbar-thumb,
+.scenes-row::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+.tracks-column::-webkit-scrollbar-thumb:hover,
+.clips-grid::-webkit-scrollbar-thumb:hover,
+.scenes-row::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+// 🎵 CONTEXT MENU STYLES
+.clip-context-menu {
+  position: fixed;
+  background: #383838;
+  border: 1px solid #555;
+  border-radius: 4px;
+  min-width: 120px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  animation: fadeInMenu 0.15s ease-out;
+
+  .context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.1s;
+    font-size: 12px;
+    color: #e0e0e0;
+
+    &:hover:not(.disabled) {
+      background: #4a4a4a;
+    }
+
+    &.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .menu-icon {
+      font-size: 12px;
+      width: 16px;
+      text-align: center;
+    }
+
+    .menu-text {
+      flex: 1;
+    }
+  }
+
+  .context-menu-separator {
+    height: 1px;
+    background: #555;
+    margin: 4px 0;
+  }
+}
+
+@keyframes fadeInMenu {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
