@@ -35,12 +35,49 @@
           Snap
         </button>
         <span class="grid-info">1/{{ gridSubdivision() }}</span>
+        
+        
       </div>
 
       <!-- Clip Info -->
       <div class="clip-info" *ngIf="currentClip()">
         <span class="clip-name">{{ currentClip()?.name || 'Untitled Clip' }}</span>
         <span class="clip-length">{{ totalBeats() }} beats</span>
+      </div>
+
+      <!-- Loop Controls -->
+      <div class="loop-controls" *ngIf="currentClip()">          <div class="control-group">
+          <label>Loop Length:</label>
+          <input 
+            type="number"
+            class="control-input"
+            min="1"
+            max="64"
+            [value]="loopLength()"
+            (input)="onLoopLengthChange($event)"
+            title="Set loop length in beats (max: 64 beats)">
+          <span class="control-unit">beats</span>
+        </div>
+
+        <div class="control-group">
+          <label>Loop Start:</label>
+          <input 
+            type="number"
+            class="control-input"
+            min="0"
+            max="63"
+            [value]="loopStart()"
+            (input)="onLoopStartChange($event)"
+            title="Set loop start position (max: 63 beats)">
+          <span class="control-unit">beats</span>
+        </div>
+
+        <button 
+          class="action-btn"
+          (click)="setLoopToClip()"
+          [disabled]="!currentClip()">
+          Loop Clip
+        </button>
       </div>
     </div>
   </div>

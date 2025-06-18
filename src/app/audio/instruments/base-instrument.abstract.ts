@@ -48,13 +48,21 @@ export abstract class BaseInstrumentImpl implements BaseInstrument {
   
   // ASTRATTO: Creazione nodi audio specifici
   protected abstract createVoiceNodes(): AudioNode[];
-
   // OBBLIGATORI: Implementazioni concrete
   stopAll(): void {
+    console.log(`🛑 BaseInstrument.stopAll() called for ${this.name}, active voices: ${this.activeVoices.size}`);
+    
     this.activeVoices.forEach((nodes, noteNumber) => {
-      this.stopVoice(noteNumber);
+      console.log(`🛑 Force stopping voice ${noteNumber}`);
+      this.forceStopVoice(noteNumber);
     });
+    
+    // Clear all active voices immediately
+    this.activeVoices.clear();
     this._voiceCount = 0;
+    this._isActive = false;
+    
+    console.log(`✅ All voices stopped for ${this.name}`);
   }
 
   setParameter(name: string, value: number): void {
@@ -109,6 +117,11 @@ export abstract class BaseInstrumentImpl implements BaseInstrument {
     return this._voiceCount;
   }
 
+  // METODO REQUIRED: Per il sequencer emergency stop
+  getActiveVoiceCount(): number {
+    return this._voiceCount;
+  }
+
   // PROTECTED: Utility methods per sottoclassi
   protected addParameterDefinition(definition: ParameterDefinition): void {
     this.parameterDefinitions.push(definition);
@@ -120,7 +133,6 @@ export abstract class BaseInstrumentImpl implements BaseInstrument {
     this._voiceCount = this.activeVoices.size;
     this._isActive = this._voiceCount > 0;
   }
-
   protected stopVoice(noteNumber: number): void {
     const nodes = this.activeVoices.get(noteNumber);
     if (nodes) {
@@ -131,6 +143,37 @@ export abstract class BaseInstrumentImpl implements BaseInstrument {
         node.disconnect();
       });
       this.activeVoices.delete(noteNumber);
+    }
+    this._voiceCount = this.activeVoices.size;
+    this._isActive = this._voiceCount > 0;
+  }
+
+  protected forceStopVoice(noteNumber: number): void {
+    const nodes = this.activeVoices.get(noteNumber);
+    if (nodes) {
+      console.log(`🛑 Force stopping voice ${noteNumber} with ${nodes.length} nodes`);
+      
+      nodes.forEach((node, index) => {
+        try {
+          if ('stop' in node && typeof node.stop === 'function') {
+            // For oscillators, stop immediately to prevent hanging notes
+            (node as any).stop(this.audioContext.currentTime);
+            console.log(`✅ Stopped node ${index} (oscillator) for voice ${noteNumber}`);
+          }
+        } catch (error) {
+          console.warn(`⚠️ Error stopping node ${index} for voice ${noteNumber}:`, error);
+        }
+        
+        try {
+          node.disconnect();
+          console.log(`✅ Disconnected node ${index} for voice ${noteNumber}`);
+        } catch (error) {
+          console.warn(`⚠️ Error disconnecting node ${index} for voice ${noteNumber}:`, error);
+        }
+      });
+      
+      this.activeVoices.delete(noteNumber);
+      console.log(`✅ Voice ${noteNumber} removed from active voices`);
     }
     this._voiceCount = this.activeVoices.size;
     this._isActive = this._voiceCount > 0;

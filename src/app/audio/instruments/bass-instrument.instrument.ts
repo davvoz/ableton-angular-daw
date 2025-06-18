@@ -155,9 +155,16 @@ export class BassInstrument extends BaseInstrumentImpl {
       unit: 'level'
     });
   }
-
   // OBBLIGATORIO: Implementazione play per bass
   play(note: MidiNote): void {
+    console.log(`🎹 BassInstrument.play() called for note ${note.note} with velocity ${note.velocity}`);
+    
+    // CRITICAL FIX: Stop any existing voice for this note to prevent duplicate oscillators
+    if (this.activeVoices.has(note.note)) {
+      console.log(`🛑 Stopping existing voice for note ${note.note} before starting new one`);
+      this.stop(note);
+    }
+    
     const frequency = this.midiNoteToFrequency(note.note);
     const gain = this.velocityToGain(note.velocity);
     const currentTime = this.audioContext.currentTime;
@@ -214,37 +221,39 @@ export class BassInstrument extends BaseInstrumentImpl {
 
     // Salva i nodi per questo note
     this.startVoice(note.note, [mainOscillator, subOscillator, mainGain, subGain]);
-  }
-
-  // OBBLIGATORIO: Implementazione stop per bass
+  }  // OBBLIGATORIO: Implementazione stop per bass
   stop(note: MidiNote): void {
+    console.log(`🛑 BassInstrument.stop() called for note ${note.note}`);
+    
     const nodes = this.activeVoices.get(note.note);
-    if (nodes && nodes.length >= 4) {
-      const [mainOscillator, subOscillator, mainGain, subGain] = nodes;
-      const currentTime = this.audioContext.currentTime;
-      const release = this.getParameter('release');
+    if (!nodes || nodes.length < 4) {
+      console.log(`⚠️ No active voice found for note ${note.note} - already stopped?`);
+      return;
+    }    const [mainOscillator, subOscillator, mainGain, subGain] = nodes;
+    const currentTime = this.audioContext.currentTime;
 
-      // Release envelope per main
-      const mainGainNode = mainGain as GainNode;
-      mainGainNode.gain.cancelScheduledValues(currentTime);
-      mainGainNode.gain.setValueAtTime(mainGainNode.gain.value, currentTime);
-      mainGainNode.gain.exponentialRampToValueAtTime(0.001, currentTime + release);
+    console.log(`� FORCE STOPPING bass note ${note.note} IMMEDIATELY (no release)`);
 
-      // Release envelope per sub
-      const subGainNode = subGain as GainNode;
-      subGainNode.gain.cancelScheduledValues(currentTime);
-      subGainNode.gain.setValueAtTime(subGainNode.gain.value, currentTime);
-      subGainNode.gain.exponentialRampToValueAtTime(0.001, currentTime + release);
+    // EMERGENCY FIX: Stop oscillators immediately without release envelope
+    try {
+      (mainOscillator as OscillatorNode).stop(currentTime);
+      (subOscillator as OscillatorNode).stop(currentTime);
+      console.log(`✅ Bass oscillators stopped IMMEDIATELY for note ${note.note}`);
+    } catch (error) {
+      console.warn(`⚠️ Error stopping bass oscillators for note ${note.note}:`, error);    }
 
-      // Stop oscillatori dopo release
-      (mainOscillator as OscillatorNode).stop(currentTime + release);
-      (subOscillator as OscillatorNode).stop(currentTime + release);
-
-      // Rimuovi voice dopo release
-      setTimeout(() => {
-        this.stopVoice(note.note);
-      }, release * 1000 + 100);
-    }
+    // CRITICAL FIX: Remove voice from active voices immediately
+    this.stopVoice(note.note);
+    console.log(`✅ Bass voice ${note.note} removed from active voices immediately`);
+  }
+  // OVERRIDE: Enhanced stopAll to handle releasing oscillators
+  override stopAll(): void {
+    console.log(`🛑 BassInstrument.stopAll() called - stopping ${this.activeVoices.size} active voices`);
+    
+    // Stop all actively playing voices (now with immediate stop)
+    super.stopAll();
+    
+    console.log(`✅ All bass voices stopped for ${this.name}`);
   }
 
   // OBBLIGATORIO: Applicazione parametri ai nodi
@@ -296,7 +305,6 @@ export class BassInstrument extends BaseInstrumentImpl {
     
     return curve;
   }
-
   // OVERRIDE: Creazione nodi specifici
   protected createVoiceNodes(): AudioNode[] {
     const mainOscillator = this.audioContext.createOscillator();
@@ -304,5 +312,10 @@ export class BassInstrument extends BaseInstrumentImpl {
     const mainGain = this.audioContext.createGain();
     const subGain = this.audioContext.createGain();
     return [mainOscillator, subOscillator, mainGain, subGain];
+  }
+  // PUBLIC: Cleanup for releasing oscillators
+  override dispose(): void {
+    console.log(`🧹 BassInstrument.dispose() called`);
+    super.dispose();
   }
 }

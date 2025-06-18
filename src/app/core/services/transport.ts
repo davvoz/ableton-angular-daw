@@ -23,14 +23,16 @@ export class TransportService {  // OBBLIGATORI: Dependency injection
   readonly currentTime = computed(() => this.stateService.transport().currentTime);
   readonly bpm = computed(() => this.stateService.transport().bpm);
   readonly transport = computed(() => this.stateService.transport());
-
   // COMPUTED: Sequencer state
   readonly playheadPosition = computed(() => this.sequencerService.getPlayheadPosition());
-  readonly activeNoteCount = computed(() => this.sequencerService.getActiveNoteCount());
   
   // COMPUTED: Metronome state
   readonly isMetronomeOn = computed(() => this.metronomeService.isEnabled());
   readonly metronomeVolume = computed(() => this.metronomeService.volume());
+
+  // COMPUTED: Loop state
+  readonly loopStart = computed(() => this.stateService.transport().loopStart);
+  readonly loopEnd = computed(() => this.stateService.transport().loopEnd);
 
   // OBBLIGATORI: Playback loop management
   private animationFrame?: number;
@@ -151,7 +153,7 @@ export class TransportService {  // OBBLIGATORI: Dependency injection
     
     console.log(`🎵 BPM set to: ${clampedBpm}`);
   }
-    setLoop(enabled: boolean, start?: number, end?: number): void {
+  setLoop(enabled: boolean, start?: number, end?: number): void {
     const currentTransport = this.stateService.transport();
     const updates: Partial<TransportState> = { isLooping: enabled };
     
@@ -172,6 +174,24 @@ export class TransportService {  // OBBLIGATORI: Dependency injection
     this.sequencerService.syncFromTransport();
     
     console.log(`🔄 Loop ${enabled ? 'enabled' : 'disabled'} from ${updates.loopStart || currentTransport.loopStart} to ${updates.loopEnd || currentTransport.loopEnd}`);
+  }
+
+  // NEW: Metodi per configurare loop start/end separatamente
+  setLoopStart(start: number): void {
+    const clampedStart = Math.max(0, start);
+    this.stateService.updateTransport({ loopStart: clampedStart });
+    this.sequencerService.syncFromTransport();
+    
+    console.log(`🔄 Loop start set to: ${clampedStart}`);
+  }
+
+  setLoopEnd(end: number): void {
+    const currentTransport = this.stateService.transport();
+    const clampedEnd = Math.max(currentTransport.loopStart + 1, end);
+    this.stateService.updateTransport({ loopEnd: clampedEnd });
+    this.sequencerService.syncFromTransport();
+    
+    console.log(`🔄 Loop end set to: ${clampedEnd}`);
   }
 
   // OBBLIGATORI: Metronome controls  
@@ -220,15 +240,8 @@ export class TransportService {  // OBBLIGATORI: Dependency injection
     const clips = this.stateService.clips();
     
     console.log(`🎬 Starting active clips, found ${clips.length} clips`);
-    
-    clips.forEach(clip => {
-      console.log(`🔍 Checking clip ${clip.name}: isPlaying=${clip.isPlaying}, noteCount=${clip.noteCount}`);
-      
-      // Auto-start clips that have notes but aren't marked as playing
-      if (!clip.isPlaying && clip.noteCount > 0) {
-        console.log(`▶️ Auto-starting clip ${clip.name} with ${clip.noteCount} notes`);
-        this.clipManager.updateClip(clip.id, { isPlaying: true });
-      }
+      clips.forEach(clip => {
+      console.log(`🔍 Checking clip ${clip.name}: isPlaying=${clip.isPlaying}`);
       
       if (clip.isPlaying) {
         console.log(`🎵 Starting clip ${clip.name} in AudioEngine`);
@@ -347,4 +360,6 @@ export class TransportService {  // OBBLIGATORI: Dependency injection
     });
     console.log('🔄 Transport reset');
   }
+
+ 
 }

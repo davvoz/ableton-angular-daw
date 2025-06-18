@@ -41,12 +41,13 @@ export class SequencerService {
   private _timeSignature = signal<{ numerator: number; denominator: number }>({ numerator: 4, denominator: 4 });
   private _isLooping = signal<boolean>(false);
   private _loopStart = signal<number>(0);
-  private _loopEnd = signal<number>(16);
-  private _swing = signal<number>(0); // 0-100%
+  private _loopEnd = signal<number>(16);  private _swing = signal<number>(0); // 0-100%
   private _quantization = signal<number>(16); // 1/16 notes
+  private _isResettingLoop = false; // Flag to prevent scheduling during loop reset
+    // METRONOMO: Traccia ultimo beat per evitare duplicati
+  private _lastMetronomeBeat = -1;
   
-  // METRONOMO: Traccia ultimo beat per evitare duplicati
-  private _lastMetronomeBeat = -1;  // OBBLIGATORI: Scheduling
+  // OBBLIGATORI: Scheduling
   private _scheduledNotes = signal<ScheduledNote[]>([]);
   private _activeNotes = signal<Map<string, { note: MidiNote; instrument: any }>>(new Map());
   private _lookAhead = 20.0; // ms - Ridotto per meno jitter del playhead
@@ -55,6 +56,10 @@ export class SequencerService {
   private _timerID: number | null = null;
   private _playStartTime = 0.0; // Audio time when play started
   private _playStartBeat = 0.0; // Beat time when play started
+  private _schedulingGeneration = 0; // Counter to invalidate old setTimeout callbacks
+  
+  // CACHE: Track instruments to prevent creating multiple instances
+  private _trackInstruments = new Map<string, any>();
 
   // COMPUTED: Reactive getters
   readonly isPlaying = this._isPlaying.asReadonly();
@@ -63,10 +68,11 @@ export class SequencerService {
   readonly timeSignature = this._timeSignature.asReadonly();
   readonly isLooping = this._isLooping.asReadonly();
   readonly loopStart = this._loopStart.asReadonly();
-  readonly loopEnd = this._loopEnd.asReadonly();
-  readonly swing = this._swing.asReadonly();
+  readonly loopEnd = this._loopEnd.asReadonly();  readonly swing = this._swing.asReadonly();
   readonly quantization = this._quantization.asReadonly();
-  readonly activeNotes = this._activeNotes.asReadonly();  // COMPUTED: Playhead position
+  readonly activeNotes = this._activeNotes.asReadonly();
+
+  // COMPUTED: Playhead position
   readonly playheadPosition = computed((): PlayheadPosition => {
     const beats = this._currentTime();
     const timeSignature = this._timeSignature();
@@ -118,9 +124,10 @@ export class SequencerService {
     this._loopStart.set(transport.loopStart);
     this._loopEnd.set(transport.loopEnd);
     this._currentTime.set(transport.currentTime);
-    
-    console.log(`🔄 Sequencer synced: loop=${transport.isLooping}, start=${transport.loopStart}, end=${transport.loopEnd}`);
-  }// OBBLIGATORIO: Transport controls
+      console.log(`🔄 Sequencer synced: loop=${transport.isLooping}, start=${transport.loopStart}, end=${transport.loopEnd}`);
+  }
+  
+  // OBBLIGATORIO: Transport controls
   play(): void {
     if (this._isPlaying()) return;
 
@@ -136,6 +143,9 @@ export class SequencerService {
     this._currentTime.set(this._playStartBeat); // Assicurati che sia sincronizzato
     
     this._lastMetronomeBeat = -1; // Reset metronomo
+    
+    // AUTO-START: Automatically start all clips that have notes
+    this.autoStartClipsWithNotes();
     
     // Update state service
     this.stateService.updateTransport({ isPlaying: true });
@@ -344,14 +354,24 @@ export class SequencerService {
 
     // Continue scheduling
     this._timerID = setTimeout(() => this.scheduler(), this._lookAhead);
-  }private scheduleNote(time: number): void {
+  }  private scheduleNote(time: number): void {
+    // Prevent scheduling during loop reset to avoid race conditions
+    if (this._isResettingLoop) {
+      console.log(`⏸️ Skipping note scheduling - loop reset in progress`);
+      return;
+    }
+    
     // Convert audio time to beat time
     let beatTime = this.audioTimeToBeatTime(time);
-    let isLoopReset = false;
-    
-    // Handle looping BEFORE updating position
+    let isLoopReset = false;    // Handle looping BEFORE updating position
     if (this._isLooping() && beatTime >= this._loopEnd()) {
       console.log(`🔄 Loop detected at beat ${beatTime}, resetting to ${this._loopStart()}`);
+        // Set flag to prevent new note scheduling during reset
+      this._isResettingLoop = true;
+      
+      // CRITICAL: Stop ALL active notes before starting new loop iteration
+      console.log(`🛑 Stopping ${this._activeNotes().size} active notes before loop reset`);
+      this.stopAllActiveNotes();
       
       // Calculate how much we've overshot the loop end
       const overshoot = beatTime - this._loopEnd();
@@ -367,6 +387,28 @@ export class SequencerService {
         this._playStartTime = audioContext.currentTime;
         this._playStartBeat = beatTime;
       }
+      
+      // ADDITIONAL SAFETY: Force stop all instruments immediately to prevent hanging notes
+      const tracks = this.stateService.tracks();
+      tracks.forEach(track => {
+        if (track.instrumentId) {
+          const instrument = this.getInstrumentForTrack(track);
+          if (instrument) {
+            try {
+              instrument.stopAll();
+              console.log(`🛑 Force stopped all notes on instrument: ${instrument.name}`);
+            } catch (error) {
+              console.error(`❌ Error force stopping instrument ${instrument.name}:`, error);
+            }
+          }
+        }
+      });
+      
+      // Clear the reset flag after a short delay to allow cleanup
+      setTimeout(() => {
+        this._isResettingLoop = false;
+        console.log(`✅ Loop reset complete, resuming normal scheduling`);
+      }, 50); // 50ms delay to ensure cleanup is complete
       
       console.log(`🔄 Loop reset: new beat time ${beatTime}, playStartTime ${this._playStartTime}, playStartBeat ${this._playStartBeat}`);
     }
@@ -415,18 +457,36 @@ export class SequencerService {
       return;
     }
 
-    console.log(`🎼 Scheduling notes for clip ${clip.name} at beat ${beatTime}, notes: ${clip.noteCount}`);
-
-    // Get notes that should play at this beat time
-    const clipLocalTime = beatTime % clip.length; // Loop within clip
+    // Calcola il tempo locale della clip rispetto al suo inizio
+    const adjustedBeatTime = beatTime - clip.startTime; // Sottrai l'offset del clip
+    const clipLocalTime = adjustedBeatTime % clip.length; // Loop within clip
     const tolerance = 1.0 / this._quantization(); // Full subdivision tolerance for better detection
 
+    console.log(`🎼 DETAILED SCHEDULING for clip ${clip.name}:`);
+    console.log(`   - Global beat time: ${beatTime}`);
+    console.log(`   - Clip start time: ${clip.startTime}`);
+    console.log(`   - Adjusted beat time: ${adjustedBeatTime}`);
+    console.log(`   - Clip local time: ${clipLocalTime}`);
+    console.log(`   - Clip length: ${clip.length}`);
+    console.log(`   - Tolerance: ${tolerance}`);
+    console.log(`   - Notes in clip: ${clip.noteCount}`);
+
+    // Solo schedula se siamo dentro il range temporale della clip
+    if (adjustedBeatTime < 0) {
+      console.log(`   ⏸️ Before clip start, skipping`);
+      return;
+    }
+
+    let notesFound = 0;
     Array.from(clip.notes.values()).forEach(note => {
       const timeDifference = Math.abs(note.startTime - clipLocalTime);
       
+      console.log(`   🎵 Checking note ${note.note} at startTime ${note.startTime}, diff: ${timeDifference}`);
+      
       if (timeDifference < tolerance) {
-        console.log(`🎵 Note ${note.note} should play at beat ${beatTime} (clip local time ${clipLocalTime}, note start ${note.startTime}, diff ${timeDifference})`);
+        console.log(`   ✅ PLAYING note ${note.note} - beat: ${beatTime}, clipLocal: ${clipLocalTime}, noteStart: ${note.startTime}`);
         this.playNoteAtTime(note, track, audioTime);
+        notesFound++;
       }
       
       // Check for note end
@@ -435,8 +495,9 @@ export class SequencerService {
         this.stopNoteAtTime(note, track, audioTime);
       }
     });
-  }
-  private playNoteAtTime(note: MidiNote, track: Track, audioTime: number): void {
+    
+    console.log(`   📊 Total notes triggered: ${notesFound}`);
+  }  private playNoteAtTime(note: MidiNote, track: Track, audioTime: number): void {
     // Get or create instrument for track
     const instrument = this.getInstrumentForTrack(track);
     if (!instrument) {
@@ -450,9 +511,18 @@ export class SequencerService {
     const swingOffset = this.calculateSwingOffset(note.startTime);
     const scheduledTime = audioTime + swingOffset;
 
+    // Capture current generation to validate callbacks later
+    const currentGeneration = this._schedulingGeneration;
+
     // Schedule note start
     setTimeout(() => {
-      console.log(`🎹 Starting note ${note.note} with velocity ${note.velocity}`);
+      // CRITICAL FIX: Check if this callback is still valid (not invalidated by loop reset)
+      if (currentGeneration !== this._schedulingGeneration) {
+        console.log(`⏸️ Skipping note ${note.note} start - invalidated by loop reset (gen ${currentGeneration} vs ${this._schedulingGeneration})`);
+        return;
+      }
+
+      console.log(`🎹 Starting note ${note.note} with velocity ${note.velocity} (generation ${currentGeneration})`);
       instrument.play(note);
       
       // Track active note
@@ -461,33 +531,39 @@ export class SequencerService {
         newNotes.set(`${track.id}-${note.id}`, { note, instrument });
         return newNotes;
       });
-    }, Math.max(0, (scheduledTime - (this.audioEngine.getAudioContext()?.currentTime || 0)) * 1000));
-
-    // Schedule note end
+    }, Math.max(0, (scheduledTime - (this.audioEngine.getAudioContext()?.currentTime || 0)) * 1000));    // Schedule note end
     const noteEndTime = scheduledTime + (note.duration * 60 / this._bpm());
     setTimeout(() => {
+      // CRITICAL FIX: Check if this callback is still valid (not invalidated by loop reset)
+      if (currentGeneration !== this._schedulingGeneration) {
+        console.log(`⏸️ Skipping note ${note.note} stop - invalidated by loop reset (gen ${currentGeneration} vs ${this._schedulingGeneration})`);
+        return;
+      }
+
+      console.log(`🎹 Stopping note ${note.note} after duration (scheduled at ${noteEndTime})`);
       this.stopNoteAtTime(note, track, noteEndTime);
     }, Math.max(0, (noteEndTime - (this.audioEngine.getAudioContext()?.currentTime || 0)) * 1000));
-  }
-
-  private stopNoteAtTime(note: MidiNote, track: Track, audioTime: number): void {
+  }  private stopNoteAtTime(note: MidiNote, track: Track, audioTime: number): void {
     const noteKey = `${track.id}-${note.id}`;
     const activeNote = this._activeNotes().get(noteKey);
     
     if (activeNote) {
-      setTimeout(() => {
+      console.log(`🎹 Stopping note ${note.note} (key: ${noteKey}) immediately`);
+      
+      try {
         activeNote.instrument.stop(note);
-        
-        // Remove from active notes
-        this._activeNotes.update(notes => {
-          const newNotes = new Map(notes);
-          newNotes.delete(noteKey);
-          return newNotes;
-        });
-      }, Math.max(0, (audioTime - (this.audioEngine.getAudioContext()?.currentTime || 0)) * 1000));
+      } catch (error) {
+        console.error(`❌ Error stopping note ${note.note}:`, error);
+      }
+      
+      // Remove from active notes
+      this._activeNotes.update(notes => {
+        const newNotes = new Map(notes);
+        newNotes.delete(noteKey);
+        return newNotes;
+      });
     }
-  }
-  private getInstrumentForTrack(track: Track): any {
+  }  private getInstrumentForTrack(track: Track): any {
     // Get or create instrument instance for track
     if (!track.instrumentId) {
       console.warn(`❌ Track ${track.name} has no instrumentId`);
@@ -496,21 +572,25 @@ export class SequencerService {
     
     console.log(`🔍 Getting instrument for track ${track.name}, instrumentId: ${track.instrumentId}`);
     
-    // Try to get existing instrument from AudioEngine
-    let instrument = this.audioEngine.acquireInstrument(track.instrumentId);
+    // CACHE FIX: Check our cache first before creating new instruments
+    const cacheKey = `${track.id}-${track.instrumentId}`;
+    let instrument = this._trackInstruments.get(cacheKey);
     
-    if (!instrument) {
-      console.log(`🏭 Creating new instrument for track ${track.name}`);
-      // Create new instrument
-      instrument = this.instrumentFactory.createInstrument(track.instrumentId, track.id);
-      
-      if (instrument) {
-        console.log(`✅ Created instrument: ${instrument.name} for track ${track.name}`);
-      } else {
-        console.error(`❌ Failed to create instrument for track ${track.name}`);
-      }
+    if (instrument) {
+      console.log(`♻️ REUSING cached instrument for track ${track.name}`);
+      return instrument;
+    }
+    
+    // Only create new if not in cache
+    console.log(`🏭 Creating new instrument for track ${track.name}`);
+    instrument = this.instrumentFactory.createInstrument(track.instrumentId, track.id);
+    
+    if (instrument) {
+      // CACHE the created instrument
+      this._trackInstruments.set(cacheKey, instrument);
+      console.log(`✅ Created and CACHED instrument: ${instrument.name} for track ${track.name}`);
     } else {
-      console.log(`♻️ Reusing existing instrument for track ${track.name}`);
+      console.error(`❌ Failed to create instrument for track ${track.name}`);
     }
     
     return instrument;
@@ -587,20 +667,58 @@ export class SequencerService {
 
   private isClipPlayingAtTime(clip: Clip, time: number): boolean {
     return clip.isPlaying && time >= clip.startTime && time < clip.startTime + clip.length;
-  }
-
-  private stopAllActiveNotes(): void {
+  }  private stopAllActiveNotes(): void {
+    // CRITICAL FIX: Increment generation FIRST to invalidate pending callbacks
+    this._schedulingGeneration = (this._schedulingGeneration || 0) + 1;
+    console.log(`🔄 Incremented scheduling generation to ${this._schedulingGeneration} to invalidate old callbacks`);
+    
+    const activeNotesCount = this._activeNotes().size;
+    console.log(`🛑 Stopping ${activeNotesCount} active notes`);
+    
     this._activeNotes().forEach((activeNote, key) => {
-      activeNote.instrument.stop(activeNote.note);
+      console.log(`🛑 Stopping note: ${activeNote.note.note} (${key})`);
+      try {
+        activeNote.instrument.stop(activeNote.note);
+        console.log(`✅ Note stopped successfully: ${activeNote.note.note}`);
+      } catch (error) {
+        console.error(`❌ Error stopping note ${activeNote.note.note}:`, error);
+      }
     });
     
+    // Clear the active notes map immediately
     this._activeNotes.set(new Map());
+    console.log(`✅ All ${activeNotesCount} notes cleared from active list`);
+    
+    // ADDITIONAL SAFETY: Force stop all instruments as a backup
+    const tracks = this.stateService.tracks();
+    tracks.forEach(track => {
+      if (track.instrumentId) {
+        try {
+          const instrument = this.getInstrumentForTrack(track);
+          if (instrument) {
+            instrument.stopAll();
+            console.log(`🛑 Backup stop all on instrument: ${instrument.name}`);
+          }
+        } catch (error) {
+          console.error(`❌ Error in backup stop for track ${track.name}:`, error);
+        }
+      }
+    });
   }
-
   private stopNotesFromClip(clipId: string): void {
+    console.log(`🛑 Stopping notes from clip: ${clipId}`);
+    let stoppedCount = 0;
+    
     this._activeNotes().forEach((activeNote, key) => {
       if (key.includes(clipId)) {
-        activeNote.instrument.stop(activeNote.note);
+        console.log(`🛑 Stopping note from clip ${clipId}: ${activeNote.note.note} (${key})`);
+        try {
+          activeNote.instrument.stop(activeNote.note);
+          stoppedCount++;
+          console.log(`✅ Note stopped: ${activeNote.note.note}`);
+        } catch (error) {
+          console.error(`❌ Error stopping note ${activeNote.note.note}:`, error);
+        }
         this._activeNotes.update(notes => {
           const newNotes = new Map(notes);
           newNotes.delete(key);
@@ -608,6 +726,8 @@ export class SequencerService {
         });
       }
     });
+    
+    console.log(`✅ Stopped ${stoppedCount} notes from clip ${clipId}`);
   }
 
   private rescheduleFromCurrentPosition(): void {
@@ -652,9 +772,7 @@ export class SequencerService {
   isClipPlaying(clipId: string): boolean {
     const clip = this.clipManager.getClip(clipId);
     return clip?.isPlaying || false;
-  }
-
-  getActiveNoteCount(): number {
+  }  getActiveNoteCount(): number {
     return this._activeNotes().size;
   }
 
@@ -700,11 +818,53 @@ export class SequencerService {
         console.log(`🎵 Force playing note ${note.note} at loop iteration - clip local time: ${clipLocalTime}, note start: ${noteStartInClip}, time diff: ${timeDifference}`);
         this.playNoteAtTime(note, track, audioTime);
       }
+    });  }
+
+  // AUTO-START: Automatically start all clips that contain notes
+  private autoStartClipsWithNotes(): void {
+    const tracks = this.stateService.tracks();
+    let clipsStarted = 0;
+    
+    tracks.forEach(track => {
+      if (track.isMuted || !track.clips) return;
+      
+      Array.from(track.clips.values()).forEach(clip => {
+        // Start clips that have notes but are not currently playing
+        if (!clip.isPlaying && clip.notes.size > 0) {
+          console.log(`🎵 Auto-starting clip "${clip.name}" (${clip.notes.size} notes)`);
+          this.startClip(clip.id);
+          clipsStarted++;
+        }
+      });
     });
+    
+    if (clipsStarted > 0) {
+      console.log(`🎵 Auto-started ${clipsStarted} clips with notes`);
+    }
   }
 
   // PUBLIC: Force sync with transport service (called when transport settings change)
   syncFromTransport(): void {
     this.syncWithTransportState();
+  }
+
+  // CACHE MANAGEMENT: Clear instrument cache to prevent memory leaks
+  private clearInstrumentCache(): void {
+    console.log(`🧹 Clearing instrument cache (${this._trackInstruments.size} instruments)`);
+    
+    // Properly dispose of cached instruments
+    this._trackInstruments.forEach((instrument, key) => {
+      try {
+        if (instrument && typeof instrument.dispose === 'function') {
+          instrument.dispose();
+          console.log(`🗑️ Disposed cached instrument: ${key}`);
+        }
+      } catch (error) {
+        console.warn(`⚠️ Error disposing instrument ${key}:`, error);
+      }
+    });
+    
+    this._trackInstruments.clear();
+    console.log(`✅ Instrument cache cleared`);
   }
 }

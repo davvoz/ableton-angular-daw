@@ -24,14 +24,7 @@
           max="200"
           step="1">
         <button class="bpm-up" (click)="setBpm(bpm() + 1)" [disabled]="bpm() >= 200">+</button>
-      </div>
-    </div>
-    
-    <!-- Note attive (se presenti) -->
-    <div class="active-notes" *ngIf="activeNoteCount() > 0">
-      <span class="label">NOTES</span>
-      <span class="value">{{ activeNoteCount() }}</span>
-    </div>
+      </div>    </div>
   </div>
 
   <!-- SEZIONE 2: Controlli di Trasporto -->

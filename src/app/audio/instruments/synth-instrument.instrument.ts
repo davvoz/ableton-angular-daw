@@ -263,10 +263,15 @@ export class SynthInstrument extends BaseInstrumentImpl {
       default: 0.7,
       unit: 'level'
     });  }
-  
-  // OBBLIGATORIO: Implementazione play per synth
+    // OBBLIGATORIO: Implementazione play per synth
   play(note: MidiNote): void {
     console.log(`🎹 SynthInstrument.play() called for note ${note.note} with velocity ${note.velocity}`);
+    
+    // CRITICAL FIX: Stop any existing voice for this note to prevent duplicate oscillators
+    if (this.activeVoices.has(note.note)) {
+      console.log(`🛑 Stopping existing voice for note ${note.note} before starting new one`);
+      this.stop(note);
+    }
     
     const frequency = this.midiNoteToFrequency(note.note);
     const gain = this.velocityToGain(note.velocity);
@@ -330,37 +335,35 @@ export class SynthInstrument extends BaseInstrumentImpl {
     oscillator1.start(currentTime);
     oscillator2.start(currentTime);
 
-    console.log(`🎯 Oscillators started at time ${currentTime}`);
-
-    // Salva i nodi per questo note
+    console.log(`🎯 Oscillators started at time ${currentTime}`);    // Salva i nodi per questo note
     this.startVoice(note.note, [oscillator1, oscillator2, osc1Gain, osc2Gain, voiceGain]);
     
-    console.log(`✅ Voice ${note.note} started successfully`);
-  }
-
-  // OBBLIGATORIO: Implementazione stop per synth
+    console.log(`✅ Voice ${note.note} started successfully. Active voices: ${this.activeVoices.size}`);
+  }  // OBBLIGATORIO: Implementazione stop per synth
   stop(note: MidiNote): void {
+    console.log(`🛑 SynthInstrument.stop() called for note ${note.note}`);
+    
     const nodes = this.activeVoices.get(note.note);
-    if (nodes && nodes.length >= 5) {
-      const [oscillator1, oscillator2, osc1Gain, osc2Gain, voiceGain] = nodes;
-      const currentTime = this.audioContext.currentTime;
-      const release = this.getParameter('release');
+    if (!nodes || nodes.length < 5) {
+      console.log(`⚠️ No active voice found for note ${note.note} - already stopped?`);
+      return;
+    }    const [oscillator1, oscillator2, osc1Gain, osc2Gain, voiceGain] = nodes;
+    const currentTime = this.audioContext.currentTime;
 
-      // Release envelope
-      const voiceGainNode = voiceGain as GainNode;
-      voiceGainNode.gain.cancelScheduledValues(currentTime);
-      voiceGainNode.gain.setValueAtTime(voiceGainNode.gain.value, currentTime);
-      voiceGainNode.gain.exponentialRampToValueAtTime(0.001, currentTime + release);
+    console.log(`� FORCE STOPPING note ${note.note} IMMEDIATELY (no release)`);
 
-      // Stop oscillatori dopo release
-      (oscillator1 as OscillatorNode).stop(currentTime + release);
-      (oscillator2 as OscillatorNode).stop(currentTime + release);
-
-      // Rimuovi voice dopo release
-      setTimeout(() => {
-        this.stopVoice(note.note);
-      }, release * 1000 + 100);
+    // EMERGENCY FIX: Stop oscillators immediately without release envelope
+    try {
+      (oscillator1 as OscillatorNode).stop(currentTime);
+      (oscillator2 as OscillatorNode).stop(currentTime);
+      console.log(`✅ Synth oscillators stopped IMMEDIATELY for note ${note.note}`);
+    } catch (error) {
+      console.warn(`⚠️ Error stopping synth oscillators for note ${note.note}:`, error);
     }
+
+    // CRITICAL FIX: Remove voice from active voices immediately
+    this.stopVoice(note.note);
+    console.log(`✅ Voice ${note.note} removed from active voices immediately`);
   }
   // OBBLIGATORIO: Applicazione parametri ai nodi
   protected applyParameterToNodes(parameterName: string, value: number): void {
@@ -432,9 +435,19 @@ export class SynthInstrument extends BaseInstrumentImpl {
     const voiceGain = this.audioContext.createGain();
     return [oscillator1, oscillator2, osc1Gain, osc2Gain, voiceGain];
   }
-
-  // PUBLIC: Cleanup per LFO permanenti
+  // OVERRIDE: Enhanced stopAll to handle releasing oscillators
+  override stopAll(): void {
+    console.log(`🛑 SynthInstrument.stopAll() called - stopping ${this.activeVoices.size} active voices`);
+    
+    // Stop all actively playing voices (now with immediate stop)
+    super.stopAll();
+    
+    console.log(`✅ All synth voices stopped for ${this.name}`);
+  }  // PUBLIC: Cleanup per LFO permanenti
   override dispose(): void {
+    console.log(`🧹 SynthInstrument.dispose() called`);
+    
+    // Stop LFO oscillators
     if (this.lfoOscillator.context.state !== 'closed') {
       this.lfoOscillator.stop();
     }

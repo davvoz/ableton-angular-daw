@@ -199,11 +199,17 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
   readonly scrollY = this._scrollY.asReadonly();
   readonly snapToGridEnabled = this._snapToGrid.asReadonly();
 
+  // Loop configuration computed properties
+  readonly loopStart = computed(() => this.transportService.loopStart());
+  readonly loopEnd = computed(() => this.transportService.loopEnd());
+  readonly loopLength = computed(() => this.loopEnd() - this.loopStart());
+
   // Transport state
   readonly isPlaying = computed(() => this.transportService.isPlaying());
   readonly currentTime = computed(() => this.transportService.currentTime());
   readonly isLooping = computed(() => this.transportService.isLooping());
-  readonly bpm = computed(() => this.transportService.bpm());  readonly playheadPosition = computed(() => {
+  readonly bpm = computed(() => this.transportService.bpm()); 
+   readonly playheadPosition = computed(() => {
     const currentTimeValue = this.currentTime();
     const clip = this.currentClip();
     
@@ -242,6 +248,7 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
       default: return 'default';
     }
   });
+
     ngOnInit(): void {
     console.log('🎹 PIANO ROLL COMPONENT INITIALIZED!');
     console.log('📎 Input clipId:', this.clipId);
@@ -257,7 +264,9 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
     this.setupDragListeners();
     this.setupKeyboardListeners();
     console.log('🎹 Piano roll setup completed');
-  }ngAfterViewInit(): void {
+  }
+  
+  ngAfterViewInit(): void {
     console.log('🔍 PIANO ROLL VIEW INIT - Checking DOM elements...');
     console.log('🎹 Grid area element:', this.gridArea?.nativeElement);
     console.log('🎹 Piano keys container:', this.pianoKeysContainer?.nativeElement);
@@ -325,7 +334,50 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
     const subdivision = this.gridSubdivision();
     const snapUnit = 1 / subdivision;
     return Math.round(timePosition / snapUnit) * snapUnit;
-  }  // Note creation
+  }  // Loop configuration controls
+  onLoopLengthChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const newLength = Math.max(1, Math.min(64, parseInt(input.value) || 1));
+    
+    const currentStart = this.loopStart();
+    // Il loop può essere più lungo del clip - il sequencer gestirà il loop interno
+    const maxLength = 64 - currentStart;
+    const finalLength = Math.min(newLength, maxLength);
+    
+    // Update the transport service loop end
+    this.transportService.setLoopEnd(currentStart + finalLength);
+    
+    console.log('🔄 Loop length changed to:', finalLength, 'beats');
+  }
+
+  onLoopStartChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const newStart = Math.max(0, Math.min(63, parseInt(input.value) || 0));
+    
+    const currentLength = this.loopLength();
+    
+    // Il loop start può andare fino a 63 (con lunghezza minima di 1)
+    const maxStart = Math.max(0, 64 - currentLength);
+    const finalStart = Math.min(newStart, maxStart);
+    
+    // Update both loop start and end to maintain length
+    this.transportService.setLoopStart(finalStart);
+    this.transportService.setLoopEnd(finalStart + currentLength);
+    
+    console.log('🔄 Loop start changed to:', finalStart, 'beats');
+  }
+
+  setLoopToClip(): void {
+    const clip = this.currentClip();
+    if (clip) {
+      this.transportService.setLoopStart(0);
+      this.transportService.setLoopEnd(clip.length);
+      console.log('🔄 Loop set to full clip length:', clip.length, 'beats');
+    }
+  }
+
+ 
+  // Note creation
   createNote(note: number, startTime: number, velocity: number = 100): void {
     const effectiveClipId = this.effectiveClipId();
     if (!effectiveClipId) {
@@ -519,13 +571,6 @@ export class PianoRoll implements OnInit, OnDestroy, AfterViewInit {
     const top = (108 - note.note) * this.keyHeight();
     const width = Math.max(20, note.duration * this.beatWidth()); // MINIMO 20px width
     const height = Math.max(18, this.keyHeight() - 1); // MINIMO 18px height
-    
-    console.log('🎵 Note position calculated:', {
-      note: note.noteName,
-      left, top, width, height,
-      beatWidth: this.beatWidth(),
-      keyHeight: this.keyHeight()
-    });
     
     return { left, top, width, height };
   }

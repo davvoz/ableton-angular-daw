@@ -103,7 +103,6 @@ export class ClipManager {
     this.updateCacheStats(false);
     return undefined;
   }
-
   // OBBLIGATORIO: Note management
   addNoteToClip(clipId: string, note: MidiNote): boolean {
     const clip = this.getClip(clipId);
@@ -112,9 +111,20 @@ export class ClipManager {
     const newNotes = new Map(clip.notes);
     newNotes.set(note.id, note);
     
+    // CRITICAL: Auto-expand clip length if note extends beyond current clip length
+    let newClipLength = clip.length;
+    const noteEndTime = note.endTime;
+    
+    if (noteEndTime > clip.length) {
+      // Expand clip to accommodate the new note, rounding up to the next beat
+      newClipLength = Math.ceil(noteEndTime);
+      console.log(`📏 Auto-expanding clip ${clipId} from ${clip.length} to ${newClipLength} beats to accommodate note ending at ${noteEndTime}`);
+    }
+    
     const updatedClip: Clip = {
       ...clip,
       notes: newNotes,
+      length: newClipLength, // Apply the potentially expanded length
       noteOrder: [...clip.noteOrder, note.id].sort((a, b) => {
         const noteA = newNotes.get(a)!;
         const noteB = newNotes.get(b)!;
@@ -128,7 +138,6 @@ export class ClipManager {
     
     return true;
   }
-
   removeNoteFromClip(clipId: string, noteId: string): boolean {
     const clip = this.getClip(clipId);
     if (!clip) return false;
@@ -136,9 +145,27 @@ export class ClipManager {
     const newNotes = new Map(clip.notes);
     newNotes.delete(noteId);
     
+    // OPTIONAL: Auto-shrink clip length if no notes extend to the current length
+    let newClipLength = clip.length;
+    if (newNotes.size > 0) {
+      const maxNoteEndTime = Math.max(...Array.from(newNotes.values()).map(n => n.endTime));
+      // Only shrink if the max note end time is significantly less than current length
+      // Keep at least 4 beats minimum, and round up to next beat
+      const minLength = Math.max(4, Math.ceil(maxNoteEndTime));
+      if (minLength < clip.length) {
+        newClipLength = minLength;
+        console.log(`📏 Auto-shrinking clip ${clipId} from ${clip.length} to ${newClipLength} beats after note removal`);
+      }
+    } else {
+      // No notes left, reset to default length
+      newClipLength = 4;
+      console.log(`📏 Resetting clip ${clipId} to default length (4 beats) - no notes remaining`);
+    }
+    
     const updatedClip: Clip = {
       ...clip,
       notes: newNotes,
+      length: newClipLength,
       noteOrder: clip.noteOrder.filter(id => id !== noteId),
       noteCount: newNotes.size
     };

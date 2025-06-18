@@ -22,10 +22,8 @@ export class Transport {
   readonly currentTime = this.transportService.currentTime;
   readonly bpm = this.transportService.bpm;
   readonly transport = this.transportService.transport;
-
   // NUOVO: Sequencer state
   readonly playheadPosition = this.transportService.playheadPosition;
-  readonly activeNoteCount = this.transportService.activeNoteCount;
   
   // NUOVO: Metronome state
   readonly isMetronomeOn = this.transportService.isMetronomeOn;
