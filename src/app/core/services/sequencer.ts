@@ -4,6 +4,7 @@ import { AudioEngineService } from '../../audio/audio-engine';
 import { InstrumentFactoryService } from './instrument-factory';
 import { ClipManager } from './clip-manager';
 import { MetronomeService } from './metronome.service';
+import { PlaybackManager } from '../timing/playback-manager';
 import { MidiNote } from '../models/midi-note.model';
 import { Clip } from '../models/clip.model';
 import { Track } from '../models/track.model';
@@ -34,6 +35,7 @@ export class SequencerService {
   private instrumentFactory = inject(InstrumentFactoryService);
   private clipManager = inject(ClipManager);
   private metronomeService = inject(MetronomeService);
+  private playbackManager = inject(PlaybackManager);
   // OBBLIGATORI: Sequencer state
   private _isPlaying = signal<boolean>(false);
   private _currentTime = signal<number>(0); // In beats
@@ -88,7 +90,6 @@ export class SequencerService {
 
   // COMPUTED: Beats per second for timing calculations
   readonly beatsPerSecond = computed(() => this._bpm() / 60);
-
   // COMPUTED: Current playing clips
   readonly playingClips = computed(() => {
     if (!this._isPlaying()) return [];
@@ -98,7 +99,9 @@ export class SequencerService {
     const playingClips: Array<{ clip: Clip; track: Track }> = [];
 
     tracks.forEach(track => {
-      if (track.isMuted || !track.clips) return;
+      // FIXED: Don't skip tracks based on mute/solo here - let the note-level logic handle it
+      // The clip scheduling should still happen, but the actual audio will be controlled in playNoteAtTime
+      if (!track.clips) return;
       
       Array.from(track.clips.values()).forEach(clip => {
         if (this.isClipPlayingAtTime(clip, currentTime)) {
@@ -107,6 +110,7 @@ export class SequencerService {
       });
     });
 
+    console.log(`🎵 Found ${playingClips.length} playing clips: ${playingClips.map(pc => `${pc.track.name}:${pc.clip.name}`).join(', ')}`);
     return playingClips;
   });
 
@@ -274,41 +278,25 @@ export class SequencerService {
     
     console.log(`🔄 Sequencer loop: ${enabled}, start=${this._loopStart()}, end=${this._loopEnd()}`);
   }
-
-  // OBBLIGATORIO: Clip playback control
+  // OBBLIGATORIO: Clip playback control - delegato a PlaybackManager
   startClip(clipId: string): void {
     const clip = this.clipManager.getClip(clipId);
     if (!clip) return;
-
-    // Find track for this clip
-    const track = this.stateService.tracks().find(t => 
-      Array.from(t.clips.values()).some(c => c.id === clipId)
-    );
     
-    if (!track) return;
-
-    // Mark clip as playing
-    this.clipManager.updateClip(clipId, { isPlaying: true });
+    // Delega al PlaybackManager
+    this.playbackManager.startClip(clipId);
     
-    // If sequencer is playing, schedule notes immediately
-    if (this._isPlaying()) {
-      this.scheduleClipNotes(clip, track);
-    }
-    
-    console.log(`🎵 Started clip: ${clip.name}`);
+    console.log(`🎵 SequencerService delegated start of clip: ${clip.name} to PlaybackManager`);
   }
 
   stopClip(clipId: string): void {
     const clip = this.clipManager.getClip(clipId);
     if (!clip) return;
-
-    // Mark clip as not playing
-    this.clipManager.updateClip(clipId, { isPlaying: false });
     
-    // Stop any active notes from this clip
-    this.stopNotesFromClip(clipId);
+    // Delega al PlaybackManager
+    this.playbackManager.stopClip(clipId);
     
-    console.log(`⏹️ Stopped clip: ${clip.name}`);
+    console.log(`⏹️ SequencerService delegated stop of clip: ${clip.name} to PlaybackManager`);
   }
 
   // PRIVATE: Scheduler implementation
@@ -452,7 +440,7 @@ export class SequencerService {
     
     this._nextNoteTime += subdivision * secondsPerBeat;
   }  private scheduleClipNotesAtTime(clip: Clip, track: Track, beatTime: number, audioTime: number): void {
-    if (!clip.isPlaying) {
+    if (!this.playbackManager.isClipActive(clip.id)) {
       console.log(`⏸️ Clip ${clip.name} not playing, skipping scheduling`);
       return;
     }
@@ -498,16 +486,38 @@ export class SequencerService {
     
     console.log(`   📊 Total notes triggered: ${notesFound}`);
   }  private playNoteAtTime(note: MidiNote, track: Track, audioTime: number): void {
-    // Get or create instrument for track
-    const instrument = this.getInstrumentForTrack(track);
-    if (!instrument) {
-      console.warn(`❌ No instrument available for track ${track.name}`);
+    console.log(`🎵 ATTEMPTING to play note ${note.note} on track ${track.name}`);
+    console.log(`   - Track ID: ${track.id}, Track Index: ${track.index}`);
+    console.log(`   - Instrument ID: ${track.instrumentId}, Instrument Type: ${track.instrumentType}`);
+    console.log(`   - Track muted: ${track.isMuted}, Track solo: ${track.isSolo}`);
+    
+    // CRITICAL: Check track mute/solo state before playing
+    if (track.isMuted) {
+      console.log(`🔇 Track ${track.name} is muted, skipping note ${note.note}`);
       return;
     }
 
-    console.log(`🎵 Playing note ${note.note} on track ${track.name} at audio time ${audioTime}`);
+    // Check if any track is in solo mode and this track is not soloed
+    const tracks = this.stateService.tracks();
+    const soloedTracks = tracks.filter(t => t.isSolo);
+    const hasSoloedTracks = soloedTracks.length > 0;
+    
+    console.log(`   - Soloed tracks: ${soloedTracks.map(t => t.name).join(', ')} (${soloedTracks.length} total)`);
+    console.log(`   - Has soloed tracks: ${hasSoloedTracks}, This track solo: ${track.isSolo}`);
+    
+    if (hasSoloedTracks && !track.isSolo) {
+      console.log(`🔇 Track ${track.name} not soloed while other tracks are, skipping note ${note.note}`);
+      return;
+    }
 
-    // Apply swing
+    // Get or create instrument for track
+    const instrument = this.getInstrumentForTrack(track);
+    if (!instrument) {
+      console.warn(`❌ No instrument available for track ${track.name} (instrumentId: ${track.instrumentId})`);
+      return;
+    }    console.log(`🎵 Playing note ${note.note} on track ${track.name} (${track.instrumentId}) at audio time ${audioTime}`);
+    console.log(`   - Instrument: ${instrument.name}, Type: ${instrument.type}, Instance ID: ${instrument.id}`);
+    console.log(`   - Track muted: ${track.isMuted}, Track solo: ${track.isSolo}`);// Apply swing
     const swingOffset = this.calculateSwingOffset(note.startTime);
     const scheduledTime = audioTime + swingOffset;
 
@@ -522,8 +532,22 @@ export class SequencerService {
         return;
       }
 
-      console.log(`🎹 Starting note ${note.note} with velocity ${note.velocity} (generation ${currentGeneration})`);
-      instrument.play(note);
+      console.log(`🎹 Starting note ${note.note} with velocity ${note.velocity} on ${instrument.name} (generation ${currentGeneration})`);
+      
+      // DIAGNOSTIC: Check if instrument is properly connected
+      const audioNode = instrument.getAudioNode();
+      console.log(`   - Audio node connected: ${audioNode ? 'YES' : 'NO'}`);
+      if (audioNode) {
+        console.log(`   - Audio node context state: ${audioNode.context.state}`);
+        console.log(`   - Audio node type: ${audioNode.constructor.name}`);
+      }
+      
+      try {
+        instrument.play(note);
+        console.log(`✅ Note ${note.note} played successfully on ${instrument.name}`);
+      } catch (error) {
+        console.error(`❌ Error playing note ${note.note} on ${instrument.name}:`, error);
+      }
       
       // Track active note
       this._activeNotes.update(notes => {
@@ -543,7 +567,7 @@ export class SequencerService {
       console.log(`🎹 Stopping note ${note.note} after duration (scheduled at ${noteEndTime})`);
       this.stopNoteAtTime(note, track, noteEndTime);
     }, Math.max(0, (noteEndTime - (this.audioEngine.getAudioContext()?.currentTime || 0)) * 1000));
-  }  private stopNoteAtTime(note: MidiNote, track: Track, audioTime: number): void {
+  }private stopNoteAtTime(note: MidiNote, track: Track, audioTime: number): void {
     const noteKey = `${track.id}-${note.id}`;
     const activeNote = this._activeNotes().get(noteKey);
     
@@ -586,6 +610,21 @@ export class SequencerService {
     instrument = this.instrumentFactory.createInstrument(track.instrumentId, track.id);
     
     if (instrument) {
+      // CRITICAL FIX: Ensure instrument is connected to audio output
+      const compressor = this.audioEngine.getMasterCompressor();
+      if (compressor) {
+        // Check if already connected to prevent double connections
+        try {
+          instrument.getAudioNode().connect(compressor);
+          console.log(`🔗 Connected instrument ${instrument.name} to audio output for track ${track.name}`);
+        } catch (error) {
+          // Instrument might already be connected, which is fine
+          console.log(`🔗 Instrument ${instrument.name} already connected to audio output`);
+        }
+      } else {
+        console.error(`❌ No master compressor available for track ${track.name}`);
+      }
+      
       // CACHE the created instrument
       this._trackInstruments.set(cacheKey, instrument);
       console.log(`✅ Created and CACHED instrument: ${instrument.name} for track ${track.name}`);
@@ -664,10 +703,11 @@ export class SequencerService {
 
     this._scheduledNotes.update(notes => [...notes, ...scheduledNotes]);
   }
-
   private isClipPlayingAtTime(clip: Clip, time: number): boolean {
-    return clip.isPlaying && time >= clip.startTime && time < clip.startTime + clip.length;
-  }  private stopAllActiveNotes(): void {
+    return this.playbackManager.isClipActive(clip.id) && 
+           time >= clip.startTime && 
+           time < clip.startTime + clip.length;
+  }private stopAllActiveNotes(): void {
     // CRITICAL FIX: Increment generation FIRST to invalidate pending callbacks
     this._schedulingGeneration = (this._schedulingGeneration || 0) + 1;
     console.log(`🔄 Incremented scheduling generation to ${this._schedulingGeneration} to invalidate old callbacks`);
@@ -768,11 +808,9 @@ export class SequencerService {
   getPlayheadPosition(): PlayheadPosition {
     return this.playheadPosition();
   }
-
   isClipPlaying(clipId: string): boolean {
-    const clip = this.clipManager.getClip(clipId);
-    return clip?.isPlaying || false;
-  }  getActiveNoteCount(): number {
+    return this.playbackManager.isClipActive(clipId);
+  }getActiveNoteCount(): number {
     return this._activeNotes().size;
   }
 
@@ -788,9 +826,8 @@ export class SequencerService {
 
   setSwing(value: number): void {
     this._swing.set(Math.max(0, Math.min(100, value)));
-  }
-  private forceScheduleNotesAtLoopStart(clip: Clip, track: Track, beatTime: number, audioTime: number): void {
-    if (!clip.isPlaying) {
+  }  private forceScheduleNotesAtLoopStart(clip: Clip, track: Track, beatTime: number, audioTime: number): void {
+    if (!this.playbackManager.isClipActive(clip.id)) {
       console.log(`⏸️ Clip ${clip.name} not playing, skipping loop start scheduling`);
       return;
     }
@@ -819,7 +856,6 @@ export class SequencerService {
         this.playNoteAtTime(note, track, audioTime);
       }
     });  }
-
   // AUTO-START: Automatically start all clips that contain notes
   private autoStartClipsWithNotes(): void {
     const tracks = this.stateService.tracks();
@@ -830,7 +866,7 @@ export class SequencerService {
       
       Array.from(track.clips.values()).forEach(clip => {
         // Start clips that have notes but are not currently playing
-        if (!clip.isPlaying && clip.notes.size > 0) {
+        if (!this.playbackManager.isClipActive(clip.id) && clip.notes.size > 0) {
           console.log(`🎵 Auto-starting clip "${clip.name}" (${clip.notes.size} notes)`);
           this.startClip(clip.id);
           clipsStarted++;

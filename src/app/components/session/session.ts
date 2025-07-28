@@ -5,6 +5,7 @@ import { StateService } from '../../core/services/state';
 import { SelectionService } from '../../core/services/selection';
 import { TrackFactoryService } from '../../core/services/track-factory.service';
 import { ClipManager } from '../../core/services/clip-manager';
+import { SequencerService } from '../../core/services/sequencer';
 import { Track as TrackModel } from '../../core/models/track.model';
 import { Clip as ClipModel } from '../../core/models/clip.model';
 
@@ -19,12 +20,12 @@ import { Clip as ClipModel } from '../../core/models/clip.model';
     'tabindex': '0'
   }
 })
-export class Session {
-  // 🎛️ DEPENDENCY INJECTION
+export class Session {  // 🎛️ DEPENDENCY INJECTION
   private stateService = inject(StateService);
   private selectionService = inject(SelectionService);
   private trackFactory = inject(TrackFactoryService);
   private clipManager = inject(ClipManager);
+  private sequencerService = inject(SequencerService);
   // 🎛️ UI STATE
   showAddTrackMenu = signal<boolean>(false);
   showClipContextMenu = signal<boolean>(false);
@@ -73,21 +74,50 @@ export class Session {
   isTrackSelected(trackId: string): boolean {
     return this.selectionService.isTrackSelected(trackId);
   }
-
   // 🎛️ TRACK CONTROLS
   toggleTrackMute(trackId: string): void {
     console.log(`🔇 Toggle mute for track ${trackId}`);
-    // TODO: Implement track muting
+    const track = this.stateService.getTrack(trackId);
+    if (!track) {
+      console.log(`❌ Track ${trackId} not found`);
+      return;
+    }
+    
+    const newMuteState = !track.isMuted;
+    
+    // Se la track è in solo, non permettere il mute
+    if (track.isSolo && newMuteState) {
+      console.log(`🚫 Cannot mute track ${track.name} because it's in solo`);
+      return;
+    }
+    
+    this.stateService.updateTrack(trackId, { 
+      isMuted: newMuteState 
+    });
+    
+    console.log(`🔇 Track ${track.name} ${newMuteState ? 'muted' : 'unmuted'}`);
   }
 
   toggleTrackSolo(trackId: string): void {
     console.log(`🔊 Toggle solo for track ${trackId}`);
-    // TODO: Implement track soloing
-  }
-
-  toggleTrackArm(trackId: string): void {
-    console.log(`🔴 Toggle arm for track ${trackId}`);
-    // TODO: Implement track arming
+    const track = this.stateService.getTrack(trackId);
+    if (!track) {
+      console.log(`❌ Track ${trackId} not found`);
+      return;
+    }
+    
+    const newSoloState = !track.isSolo;
+    
+    // Gestione del solo: quando una track va in solo, le altre vengono automaticamente mutate
+    if (newSoloState) {
+      // Attiva solo su questa track e muta tutte le altre
+      this.stateService.setSoloTrack(trackId);
+      console.log(`🎵 Track ${track.name} soloed - all other tracks muted`);
+    } else {
+      // Disattiva solo su questa track
+      this.stateService.clearSolo();
+      console.log(`🎵 Solo cleared - all tracks unmuted`);
+    }
   }
 
   // 🎬 SCENE MANAGEMENT
@@ -170,11 +200,10 @@ export class Session {
     });
     
     return clipAtScene || null;
-  }
-
-  isClipPlaying(clipId: string): boolean {
-    // TODO: Implement clip playing state
-    return false;
+  }  isClipPlaying(clipId: string): boolean {
+    // Usa playingClips computed invece di chiamare metodi che modificano signal
+    const playingClips = this.sequencerService.playingClips();
+    return playingClips.some(pc => pc.clip.id === clipId);
   }
 
   isClipSelected(clipId: string): boolean {
@@ -280,6 +309,20 @@ export class Session {
       );
       console.log(`📋 Duplicated clip: ${clip.id} -> ${newClip.id}`);
     });
+  }  playClip(clipId: string): void {
+    console.log('🎵 Playing clip:', clipId);
+    
+    // Usa playingClips computed invece di chiamare metodi che modificano signal
+    const playingClips = this.sequencerService.playingClips();
+    const isPlaying = playingClips.some(pc => pc.clip.id === clipId);
+    
+    if (isPlaying) {
+      console.log('⏹️ Stopping clip:', clipId);
+      this.sequencerService.stopClip(clipId);
+    } else {
+      console.log('▶️ Starting clip:', clipId);
+      this.sequencerService.startClip(clipId);
+    }
   }
 
   trackById = (index: number, track: TrackModel): string => track.id;

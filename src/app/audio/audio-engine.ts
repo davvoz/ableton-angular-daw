@@ -13,6 +13,14 @@ export class AudioEngineService {
   // OBBLIGATORI: Object pooling per performance
   private instrumentPool = new Map<string, BaseInstrument[]>();
   private activeInstruments = new Map<string, BaseInstrument>();
+    // OBBLIGATORIO: Note scheduling
+  private scheduledNotes = new Map<string, {
+    instrumentId: string;
+    note: number;
+    velocity: number;
+    startTime: number;
+    onended?: () => void;
+  }>();
   
   // OBBLIGATORI: Stato reattivo
   private _isInitialized = signal<boolean>(false);
@@ -216,13 +224,148 @@ export class AudioEngineService {
     return this.masterGain && this._isInitialized() ? this.masterGain : null;
   }
 
-  // UTILITY: Conversioni audio
-  dbToLinear(db: number): number {
-    return Math.pow(10, db / 20);
+  // OBBLIGATORIO: Gestione note
+  stopAllNotes(): void {
+    console.log(`🔇 Stopping all notes`);
+    
+    // Stop all notes in all active instruments
+    this.activeInstruments.forEach((instrument) => {
+      instrument.stopAll();
+    });
+    
+    // Clear scheduled notes
+    this.scheduledNotes.clear();
+    
+    console.log(`🔇 All notes stopped`);
   }
-
-  linearToDb(linear: number): number {
-    return 20 * Math.log10(linear);
+  stopNote(note: number, voiceId?: string): void {
+    console.log(`🔇 Stopping note: note=${note}${voiceId ? `, voiceId=${voiceId}` : ''}`);
+    
+    // Se abbiamo un voiceId, ferma quella nota specifica
+    if (voiceId && this.scheduledNotes.has(voiceId)) {
+      const noteInfo = this.scheduledNotes.get(voiceId);
+      if (noteInfo) {
+        const instrument = this.activeInstruments.get(noteInfo.instrumentId);
+        if (instrument) {
+          // Crea oggetto MidiNote per fermarlo
+          const midiNote = {
+            id: voiceId,
+            note: note,
+            velocity: noteInfo.velocity,
+            startTime: noteInfo.startTime,
+            duration: 0,
+            noteName: this.midiNoteToName(note),
+            endTime: 0
+          };
+          
+          instrument.stop(midiNote);
+          this.scheduledNotes.delete(voiceId);
+        }
+      }
+      return;
+    }
+    
+    // Se non abbiamo un voiceId, ferma tutte le note con questo note
+    this.activeInstruments.forEach((instrument) => {
+      // Poiché non abbiamo un ID specifico, fermando per note potremmo fermare più note
+      // Questo è un approccio semplificato
+      const midiNote = {
+        id: `note-${note}`,
+        note: note,
+        velocity: 0,
+        startTime: 0,
+        duration: 0,
+        noteName: this.midiNoteToName(note),
+        endTime: 0
+      };
+      
+      instrument.stop(midiNote);
+    });
+    
+    // Rimuovi anche dalle note schedulate quelle con questo note
+    Array.from(this.scheduledNotes.entries()).forEach(([id, noteInfo]) => {
+      if (noteInfo.note === note) {
+        this.scheduledNotes.delete(id);
+      }
+    });
+  }
+  scheduleNote(
+    note: number,
+    velocity: number, 
+    audioTime: number, 
+    instrumentId: string
+  ): string | null {
+    console.log(`🎵 Scheduling note: note=${note}, velocity=${velocity}, time=${audioTime}, instrument=${instrumentId}`);
+    
+    // Verifica che l'audioContext sia attivo
+    if (!this.audioContext || this.audioContext.state !== 'running') {
+      console.warn(`⚠️ AudioContext not running, can't schedule note`);
+      return null;
+    }
+    
+    // Genera un ID univoco per questa nota
+    const voiceId = `note-${instrumentId}-${note}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    
+    // Ottieni lo strumento da usare
+    const instrument = this.activeInstruments.get(instrumentId) || this.acquireInstrument(instrumentId);
+    if (!instrument) {
+      console.warn(`⚠️ Instrument ${instrumentId} not available`);
+      return null;
+    }
+    
+    // Calcola quando suonare la nota (rispetto al tempo attuale)
+    const currentTime = this.audioContext.currentTime;
+    const scheduledTime = Math.max(currentTime, audioTime);
+    const delayTime = Math.max(0, scheduledTime - currentTime);
+    
+    // Se la nota deve essere suonata immediatamente
+    if (delayTime <= 0.01) {
+      // Suona immediatamente
+      const midiNote = {
+        id: voiceId,
+        note: note,
+        velocity,
+        startTime: 0,
+        duration: 0,
+        noteName: this.midiNoteToName(note),
+        endTime: 0
+      };
+      
+      instrument.play(midiNote);
+    } else {
+      // Schedula per il futuro usando setTimeout
+      setTimeout(() => {
+        const midiNote = {
+          id: voiceId,
+          note: note,
+          velocity,
+          startTime: 0,
+          duration: 0,
+          noteName: this.midiNoteToName(note),
+          endTime: 0
+        };
+        
+        instrument.play(midiNote);
+      }, delayTime * 1000);
+    }
+    
+    // Mantieni traccia della nota schedulata
+    this.scheduledNotes.set(voiceId, {
+      instrumentId,
+      note,
+      velocity,
+      startTime: scheduledTime
+    });
+    
+    return voiceId;
+  }
+  
+  // HELPER: Converte una nota MIDI in nome nota
+  private midiNoteToName(midiNote: number): string {
+    const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const octave = Math.floor(midiNote / 12) - 1;
+    const noteName = noteNames[midiNote % 12];
+    return `${noteName}${octave}`;
   }
 
   // CLEANUP: Dispose resources

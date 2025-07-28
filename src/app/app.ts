@@ -167,13 +167,6 @@ export class App {
       this.stateService.updateTrack(trackId, { isSolo: !track.isSolo });
     }
   }
-
-  toggleTrackArm(trackId: string): void {
-    const track = this.stateService.getTrack(trackId);
-    if (track) {
-      this.stateService.updateTrack(trackId, { isArmed: !track.isArmed });
-    }  }
-
   setDetailTab(tab: DetailTab): void {
     this._activeDetailTab.set(tab);
     if (!this._showDetailView()) {

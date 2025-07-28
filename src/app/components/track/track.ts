@@ -39,7 +39,7 @@ export class Track implements OnInit {
   private _currentInstrument = signal<BaseInstrument | null>(null);
   private _showInstrumentControls = signal<boolean>(false);
 
-  // COMPUTED: Reactive getters
+  // COMPUTED: Reactive getters - con dati aggiornati dal StateService
   readonly clips = this._clips.asReadonly();
   readonly isHovered = this._isHovered.asReadonly();
   readonly currentInstrument = this._currentInstrument.asReadonly();
@@ -48,6 +48,16 @@ export class Track implements OnInit {
   readonly isSelected = computed(() => 
     this.selectionService.isTrackSelected(this.trackData.id)
   );
+    // NUOVO: Computed per dati reattivi della track
+  readonly reactiveTrackData = computed(() => {
+    const stateTrack = this.stateService.getTrack(this.trackData.id);
+    if (stateTrack) {
+      console.log(`🔄 reactiveTrackData updated for ${stateTrack.name}: muted=${stateTrack.isMuted}, solo=${stateTrack.isSolo}`);
+      return stateTrack;
+    }
+    console.log(`⚠️ reactiveTrackData fallback to input data for ${this.trackData.name}`);
+    return this.trackData;
+  });
   readonly clipCount = computed(() => this.clips().length);
   readonly timelineBeats = computed(() => {
     // Generate beat markers for timeline
@@ -182,10 +192,19 @@ export class Track implements OnInit {
     // TODO: Apri piano roll per editing clip
     console.log(`🎵 Opening piano roll for clip: ${clipId}`);
   }
-
   onClipContextMenu(clipId: string, event: MouseEvent): void {
     // TODO: Mostra context menu per clip
     console.log(`📝 Context menu for clip: ${clipId}`, event);
+  }
+
+  onClipPlay(clipId: string): void {
+    console.log(`🎵 Track received play event for clip: ${clipId}`);
+    // Additional track-level logic can be added here if needed
+  }
+
+  onClipStop(clipId: string): void {
+    console.log(`⏹️ Track received stop event for clip: ${clipId}`);
+    // Additional track-level logic can be added here if needed
   }
 
   onTimelineDoubleClick(event: MouseEvent): void {
@@ -206,33 +225,54 @@ export class Track implements OnInit {
 
   onDragOver(event: DragEvent): void {
     event.preventDefault();
-  }
-
-  // UTILITY: Track controls
+  }  // UTILITY: Track controls
   toggleMute(): void {
+    const currentTrack = this.reactiveTrackData();
+    const newMuteState = !currentTrack.isMuted;
+    
+    console.log(`🔧 BEFORE MUTE: Track ${currentTrack.name} - isMuted: ${currentTrack.isMuted}`);
+    
+    // Se la track è in solo, non permettere il mute
+    if (currentTrack.isSolo && newMuteState) {
+      console.log(`🚫 Cannot mute track ${currentTrack.name} because it's in solo`);
+      return;
+    }
+    
     this.stateService.updateTrack(this.trackData.id, { 
-      isMuted: !this.trackData.isMuted 
+      isMuted: newMuteState 
     });
+    
+    console.log(`🔇 AFTER UPDATE: Track ${currentTrack.name} should be ${newMuteState ? 'muted' : 'unmuted'}`);
+    
+    // Force check after update
+    setTimeout(() => {
+      const updatedTrack = this.reactiveTrackData();
+      console.log(`✅ VERIFICATION: Track ${updatedTrack.name} - isMuted: ${updatedTrack.isMuted}`);
+    }, 100);
   }
 
   toggleSolo(): void {
-    this.stateService.updateTrack(this.trackData.id, { 
-      isSolo: !this.trackData.isSolo 
-    });
+    const currentTrack = this.reactiveTrackData();
+    const newSoloState = !currentTrack.isSolo;
+    
+    // Gestione del solo: quando una track va in solo, le altre vengono automaticamente mutate
+    if (newSoloState) {
+      // Attiva solo su questa track e muta tutte le altre
+      this.stateService.setSoloTrack(this.trackData.id);
+      console.log(`🎵 Track ${currentTrack.name} soloed - all other tracks muted`);
+    } else {
+      // Disattiva solo su questa track
+      this.stateService.clearSolo();
+      console.log(`🎵 Solo cleared - all tracks unmuted`);
+    }
   }
-
-  toggleArm(): void {
-    this.stateService.updateTrack(this.trackData.id, { 
-      isArmed: !this.trackData.isArmed 
-    });
-  }
-
   // UTILITY: UI helpers
   getTrackStyle(): { [key: string]: string } {
+    const currentTrack = this.reactiveTrackData();
     return {
-      'background-color': this.trackData.color,
-      'height': `${this.trackData.height}px`,
-      'opacity': this.trackData.isMuted ? '0.6' : '1.0'
+      'background-color': currentTrack.color,
+      'height': `${currentTrack.height}px`,
+      'opacity': currentTrack.isMuted ? '0.6' : '1.0'
     };
   }
 

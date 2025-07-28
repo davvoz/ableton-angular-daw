@@ -34,21 +34,11 @@
     opacity: 0.6;
     filter: grayscale(50%);
   }
-
   &.solo {
     border-left: 3px solid #ffcc02;
     background: linear-gradient(135deg, #2a2519 0%, #2d2620 100%);
     box-shadow: 
       0 0 0 1px rgba(255, 204, 2, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-
-  &.armed {
-    border-left: 3px solid #ff3b30;
-    background: linear-gradient(135deg, #2a1919 0%, #2d2020 100%);
-    animation: pulse-arm 2s infinite;
-    box-shadow: 
-      0 0 0 1px rgba(255, 59, 48, 0.3),
       inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
   // Track Header - Ableton style
@@ -131,30 +121,22 @@
           box-shadow: 
             inset 0 1px 0 rgba(255, 255, 255, 0.2),
             0 0 8px rgba(0, 0, 0, 0.5);
-        }
-
-        &.mute-btn.active {
+        }        &.mute-btn.active {
+          background: linear-gradient(135deg, #666 0%, #555 100%);
+          border-color: #666;
+          color: #fff;
+          text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+          box-shadow: 
+            inset 0 1px 0 rgba(255, 255, 255, 0.1),
+            0 0 8px rgba(102, 102, 102, 0.5);
+        }        &.solo-btn.active {
           background: linear-gradient(135deg, #ffcc02 0%, #f7b500 100%);
           border-color: #ffcc02;
           color: #1a1a1a;
           text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
-        }
-
-        &.solo-btn.active {
-          background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
-          border-color: #ff6b35;
-          color: white;
-          text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
-        }
-
-        &.arm-btn.active {
-          background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%);
-          color: white;
-          border-color: #F44336;
           box-shadow: 
-            0 0 0 1px rgba(244, 67, 54, 0.3),
-            0 2px 4px rgba(244, 67, 54, 0.3),
-            0 0 24px rgba(255, 59, 48, 0.5);
+            inset 0 1px 0 rgba(255, 255, 255, 0.2),
+            0 0 12px rgba(255, 204, 2, 0.6);
         }
 
         &.create-clip-btn {
@@ -243,19 +225,9 @@
 // Animations
 @keyframes pulse {
   0%, 100% {
-    opacity: 1;
-  }
+    opacity: 1;  }
   50% {
     opacity: 0.7;
-  }
-}
-
-@keyframes pulse-arm {
-  0%, 100% {
-    border-left-color: #F44336;
-  }
-  50% {
-    border-left-color: #FF5722;
   }
 }
 
@@ -272,22 +244,6 @@
     opacity: 1;
     padding-top: 12px;
     padding-bottom: 12px;
-  }
-}
-
-// Ableton-style pulse animation for armed tracks
-@keyframes pulse-arm {
-  0%, 100% {
-    box-shadow: 
-      inset 0 1px 0 rgba(255, 255, 255, 0.2),
-      0 0 8px rgba(255, 59, 48, 0.6),
-      0 0 16px rgba(255, 59, 48, 0.3);
-  }
-  50% {
-    box-shadow: 
-      inset 0 1px 0 rgba(255, 255, 255, 0.2),
-      0 0 12px rgba(255, 59, 48, 0.8),
-      0 0 24px rgba(255, 59, 48, 0.5);
   }
 }
 

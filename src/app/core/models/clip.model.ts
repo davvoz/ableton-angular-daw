@@ -15,12 +15,11 @@ export interface Clip {
   // OBBLIGATORI: Contenuto MIDI
   readonly notes: ReadonlyMap<string, MidiNote>; // OBBLIGATORIO: Map per O(1) lookup
   readonly noteOrder: readonly string[];    // OBBLIGATORIO: Array per ordine temporale
-  
-  // OBBLIGATORI: Stato
+    // OBBLIGATORI: Stato
   readonly isLoop: boolean;                 // OBBLIGATORIO: Se il clip è in loop
-  readonly isPlaying: boolean;              // OBBLIGATORIO: Se il clip sta suonando
   readonly isMuted: boolean;                // OBBLIGATORIO: Se il clip è mutato
   readonly isSelected: boolean;             // OBBLIGATORIO: Se il clip è selezionato
+  // NOTA: isPlaying RIMOSSO - lo stato di playback è ora gestito centralmente in PlaybackState
   
   // OBBLIGATORI: Colore e visualizzazione
   readonly color: string;                   // OBBLIGATORIO: Colore del clip (hex)

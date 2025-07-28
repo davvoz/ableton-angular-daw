@@ -36,14 +36,19 @@ export class InstrumentFactoryService {
       return null;
     }
 
-    const instanceId = this.generateInstanceId(definitionId, trackId);    try {
-      const instrument = this.createInstrumentInstance(definition, audioContext, instanceId);
+    const instanceId = this.generateInstanceId(definitionId, trackId);    try {      const instrument = this.createInstrumentInstance(definition, audioContext, instanceId);
       
       if (instrument) {        // OBBLIGATORIO: Connetti strumento all'AudioEngine output
         const compressor = this.audioEngine.getMasterCompressor();
         if (compressor) {
-          instrument.getAudioNode().connect(compressor);
-          console.log(`🔗 Connected instrument ${instrument.name} to audio output`);
+          try {
+            instrument.getAudioNode().connect(compressor);
+            console.log(`🔗 Connected instrument ${instrument.name} to audio output`);
+          } catch (error) {
+            console.warn(`⚠️ Could not connect instrument ${instrument.name} to compressor:`, error);
+          }
+        } else {
+          console.error(`❌ No master compressor available for instrument ${instrument.name}`);
         }
         
         // Applica preset di default

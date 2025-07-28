@@ -228,11 +228,8 @@
     .track-controls {
       display: flex;
       gap: 2px;
-      margin-top: 4px;
-
-      .track-mute-btn,
-      .track-solo-btn,
-      .track-arm-btn {
+      margin-top: 4px;      .track-mute-btn,
+      .track-solo-btn {
         width: 18px;
         height: 18px;
         border: 1px solid #555;
@@ -259,12 +256,6 @@
             background: #ffeb3b;
             border-color: #ffeb3b;
             color: #000;
-          }
-
-          &.track-arm-btn {
-            background: #f44336;
-            border-color: #f44336;
-            color: #fff;
           }
         }
       }
@@ -424,6 +415,31 @@
         &.selected {
           border-color: #ff6b35;
           box-shadow: 0 0 0 2px #ff6b35;
+
+          // 🎯 PLAY BUTTON STYLES
+          .clip-play-button {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: #00FF00;
+            color: black;
+            border: 2px solid black;
+            padding: 2px 6px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: all 0.1s ease;
+
+            &:hover {
+              background: #33FF33;
+              transform: scale(1.1);
+            }
+
+            &:active {
+              transform: scale(0.95);
+            }
+          }
         }
       }
     }

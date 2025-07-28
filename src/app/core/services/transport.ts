@@ -241,12 +241,15 @@ export class TransportService {  // OBBLIGATORI: Dependency injection
     
     console.log(`🎬 Starting active clips, found ${clips.length} clips`);
       clips.forEach(clip => {
-      console.log(`🔍 Checking clip ${clip.name}: isPlaying=${clip.isPlaying}`);
+      // Note: isPlaying is now managed by PlaybackManager, not in clip model
+      console.log(`🔍 Checking clip ${clip.name}`);
       
-      if (clip.isPlaying) {
-        console.log(`🎵 Starting clip ${clip.name} in AudioEngine`);
-        this.audioEngine.startClip(clip.id);
-      }
+      // Check if clip should be playing using PlaybackManager or other logic
+      // For now, we'll comment this out since isPlaying is not on the clip model
+      // if (clip.isPlaying) {
+      //   console.log(`🎵 Starting clip ${clip.name} in AudioEngine`);
+      //   this.audioEngine.startClip(clip.id);
+      // }
     });
   }
 

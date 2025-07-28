@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { StateService } from '../../core/services/state';
 import { SelectionService } from '../../core/services/selection';
 import { ClipManager } from '../../core/services/clip-manager';
+import { SequencerService } from '../../core/services/sequencer';
+import { PlaybackManager } from '../../core/timing/playback-manager';
 import { Clip as ClipModel } from '../../core/models/clip.model';
 import { MidiNote } from '../../core/models/midi-note.model';
 
@@ -19,16 +21,19 @@ export class Clip {
   @Input() trackHeight: number = 80;
   @Input() timelineZoom: number = 1.0;
   @Input() beatWidth: number = 50;
-
   // OBBLIGATORI: Output events
   @Output() clipSelected = new EventEmitter<{ clipId: string, event: MouseEvent }>();
   @Output() clipDoubleClick = new EventEmitter<string>();
   @Output() clipContextMenu = new EventEmitter<{ clipId: string, event: MouseEvent }>();
+  @Output() clipPlay = new EventEmitter<string>();
+  @Output() clipStop = new EventEmitter<string>();
 
   // OBBLIGATORI: Dependency injection
   private stateService = inject(StateService);
   private selectionService = inject(SelectionService);
   private clipManager = inject(ClipManager);
+  private sequencerService = inject(SequencerService);
+  private playbackManager = inject(PlaybackManager);
 
   // OBBLIGATORI: Local state
   private _isHovered = signal<boolean>(false);
@@ -39,6 +44,9 @@ export class Clip {
   readonly isDragging = this._isDragging.asReadonly();
   readonly isSelected = computed(() => 
     this.selectionService.isClipSelected(this.clipData.id)
+  );
+  readonly isPlaying = computed(() => 
+    this.playbackManager.isClipActive(this.clipData.id)
   );
   readonly noteCount = computed(() => this.clipData.noteCount);
   readonly duration = computed(() => this.clipData.length);
@@ -100,12 +108,30 @@ export class Clip {
   onDragEnd(): void {
     this._isDragging.set(false);
   }
-
   // UTILITY: Actions
   toggleMute(): void {
     this.stateService.updateClip(this.clipData.id, { 
       isMuted: !this.clipData.isMuted 
     });
+  }
+
+  playClip(): void {
+    this.sequencerService.startClip(this.clipData.id);
+    this.clipPlay.emit(this.clipData.id);
+    console.log(`🎵 Playing clip: ${this.clipData.name}`);
+  }
+
+  stopClip(): void {
+    this.sequencerService.stopClip(this.clipData.id);
+    this.clipStop.emit(this.clipData.id);
+    console.log(`⏹️ Stopping clip: ${this.clipData.name}`);
+  }
+  togglePlayback(): void {
+    if (this.isPlaying()) {
+      this.stopClip();
+    } else {
+      this.playClip();
+    }
   }
 
   duplicateClip(): void {
@@ -137,7 +163,7 @@ export class Clip {
       'hovered': this.isHovered(),
       'dragging': this.isDragging(),
       'muted': this.clipData.isMuted,
-      'playing': this.clipData.isPlaying,
+      'playing': this.isPlaying(),
       'has-notes': this.hasNotes(),
       'loop': this.clipData.isLoop
     };
@@ -147,5 +173,12 @@ export class Clip {
     const beats = Math.floor(this.duration());
     const fraction = (this.duration() % 1).toFixed(2).substring(2);
     return fraction === '00' ? `${beats}` : `${beats}.${fraction}`;
+  }
+
+  // TEST: Metodo per testare se il click funziona
+  testClick(): void {
+    console.log('🎯 BOTTONE CLICCATO!');
+    alert('BOTTONE PLAY CLICCATO!');
+    this.togglePlayback();
   }
 }

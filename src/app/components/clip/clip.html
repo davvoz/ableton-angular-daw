@@ -9,27 +9,44 @@
   (mouseenter)="onMouseEnter()"
   (mouseleave)="onMouseLeave()"
   (dragstart)="onDragStart($event)"
-  (dragend)="onDragEnd()"
-  [attr.title]="clipData.name + ' (' + formatDuration() + ' beats)'"
+  (dragend)="onDragEnd()"  [attr.title]="clipData.name + ' (' + formatDuration() + ' beats)'"
   [attr.aria-label]="'Clip: ' + clipData.name">
-
-  <!-- Clip Header -->
+  
+  <!-- TESTO DI TEST GIGANTE -->
+  <div style="position: absolute; top: -20px; left: 0; background: red; color: white; font-size: 12px; font-weight: bold; z-index: 10000;">
+    COMPONENTE ATTIVO
+  </div>
+    <!-- BOTTONE PLAY SEMPLICE E FISSO - SEMPRE VISIBILE -->
+  <div style="position: absolute; top: 5px; right: 5px; z-index: 9999; background: red; padding: 2px;">
+    <button 
+      (click)="testClick(); $event.stopPropagation()"
+      style="background: yellow; color: red; border: 3px solid blue; padding: 8px 12px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 0px;">
+      PLAY
+    </button>
+  </div>
+  <!-- Clip Header CON BOTTONE PLAY GIGANTE -->
   <div class="clip-header">
-    <span class="clip-name">{{ clipData.name }}</span>
-    <div class="clip-info">
+    <span class="clip-name">{{ clipData.name }} ⭐TEST⭐</span>
+    <div class="clip-info">      <!-- ⭐ BOTTONE PLAY HEADER ⭐ -->
+      <button 
+        class="control-btn play-btn header-play-btn PLAY-BUTTON-MEGA"
+        (click)="togglePlayback(); $event.stopPropagation()"
+        [class.active]="isPlaying()"
+        [title]="isPlaying() ? 'Stop clip' : 'Play clip'">
+        @if (isPlaying()) {
+          ⏹
+        } @else {
+          ▶
+        }
+      </button>
       @if (clipData.isLoop) {
-        <span class="loop-indicator" title="Loop enabled">🔁</span>
+        <span class="loop-indicator" title="Loop enabled">�</span>
       }
       @if (clipData.isMuted) {
         <span class="mute-indicator" title="Muted">🔇</span>
       }
-      @if (clipData.isPlaying) {
-        <span class="play-indicator" title="Playing">▶️</span>
-      }
     </div>
-  </div>
-
-  <!-- Notes Preview -->
+  </div>  <!-- Notes Preview -->
   @if (hasNotes()) {
     <div class="notes-preview">
       @for (note of notesPreview(); track note.left) {
@@ -43,17 +60,49 @@
             'opacity': note.opacity
           }">
         </div>
-      }
+      }      <!-- BOTTONE PLAY CON NOTES -->
+      <button 
+        class="overlay-play-btn SEMPRE-VISIBILE"
+        (click)="togglePlayback(); $event.stopPropagation()"
+        [class.active]="isPlaying()"
+        [title]="isPlaying() ? 'Stop clip' : 'Play clip'">
+        @if (isPlaying()) {
+          ⏹
+        } @else {
+          ▶
+        }
+      </button>
     </div>
   } @else {
     <div class="empty-clip">
-      <span class="empty-text">Empty</span>
+      <span class="empty-text">Empty</span>      <!-- BOTTONE PLAY EMPTY CLIP -->
+      <button 
+        class="large-play-btn MEGA-VISIBILE"
+        (click)="togglePlayback(); $event.stopPropagation()"
+        [class.active]="isPlaying()"
+        [title]="isPlaying() ? 'Stop clip' : 'Play clip'">
+        @if (isPlaying()) {
+          ⏹
+        } @else {
+          ▶
+        }
+      </button>
     </div>
   }
-
   <!-- Clip Controls (shown on hover) -->
   @if (isHovered()) {
     <div class="clip-controls">
+      <button 
+        class="control-btn play-btn"
+        (click)="togglePlayback(); $event.stopPropagation()"
+        [class.active]="isPlaying()"
+        [title]="isPlaying() ? 'Stop clip' : 'Play clip'">
+        @if (isPlaying()) {
+          ⏹️
+        } @else {
+          ▶️
+        }
+      </button>
       <button 
         class="control-btn mute-btn"
         (click)="toggleMute(); $event.stopPropagation()"

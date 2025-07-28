@@ -3,9 +3,11 @@
   cursor: pointer;
   border-radius: 4px;
   transition: all 0.2s ease;
-  overflow: hidden;
+  overflow: visible !important; /* Così i bottoni non vengono tagliati */
   background: linear-gradient(135deg, var(--clip-color, #2196F3), var(--clip-color-dark, #1976D2));
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  min-height: 60px !important; /* Altezza minima per vedere i bottoni */
+  min-width: 120px !important; /* Larghezza minima */
 
   &:hover {
     transform: translateY(-1px);
@@ -42,17 +44,18 @@
       rgba(255, 255, 255, 0.1) 4px
     );
   }
-
-  // Clip Header
+  // Clip Header - GRANDE PER IL BOTTONE PLAY
   .clip-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 4px 8px;
-    background: rgba(0, 0, 0, 0.2);
-    font-size: 11px;
+    padding: 8px 12px !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+    font-size: 12px;
     color: white;
     font-weight: 500;
+    min-height: 40px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 
     .clip-name {
       flex: 1;
@@ -60,9 +63,7 @@
       text-overflow: ellipsis;
       white-space: nowrap;
       max-width: 120px;
-    }
-
-    .clip-info {
+    }    .clip-info {
       display: flex;
       gap: 4px;
       align-items: center;
@@ -72,10 +73,39 @@
       .play-indicator {
         font-size: 10px;
         opacity: 0.8;
+      }      // Header Play Button - SEMPRE VISIBILE E GRANDE
+      .header-play-btn {
+        background: #4CAF50 !important;
+        border: 2px solid #ffffff !important;
+        border-radius: 4px !important;
+        color: white !important;
+        font-size: 12px !important;
+        padding: 2px 6px !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        opacity: 1 !important;
+        font-weight: bold !important;
+        min-width: 24px !important;
+        min-height: 20px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+
+        &:hover {
+          background: #66BB6A !important;
+          transform: scale(1.1) !important;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        &.active {
+          background: #F44336 !important;
+          border-color: #ffffff !important;
+          animation: pulse 1s infinite !important;
+        }
       }
     }
   }
-
   // Notes Preview
   .notes-preview {
     position: relative;
@@ -94,18 +124,86 @@
       &:hover {
         background: rgba(255, 255, 255, 1);
       }
+    }    // Overlay Play Button SUPER VISIBILE
+    .overlay-play-btn {
+      position: absolute !important;
+      top: 5px !important;
+      right: 5px !important;
+      transform: none !important;
+      background: #4CAF50 !important;
+      border: 2px solid white !important;
+      border-radius: 50% !important;
+      color: white !important;
+      font-size: 14px !important;
+      width: 24px !important;
+      height: 24px !important;
+      cursor: pointer !important;
+      transition: all 0.2s ease !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+      z-index: 1000 !important;
+
+      &:hover {
+        background: #66BB6A !important;
+        transform: scale(1.2) !important;
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.6) !important;
+      }
+
+      &.active {
+        background: #F44336 !important;
+        animation: pulse 1s infinite !important;
+      }
     }
   }
-
   // Empty Clip
   .empty-clip {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     height: calc(100% - 24px);
     margin: 2px;
     background: rgba(0, 0, 0, 0.1);
     border-radius: 2px;
+    gap: 8px;
+
+    .empty-text {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 11px;
+      font-weight: 500;
+    }    // Large Play Button SUPER VISIBILE per empty clips
+    .large-play-btn {
+      background: #4CAF50 !important;
+      border: 2px solid white !important;
+      border-radius: 50% !important;
+      color: white !important;
+      font-size: 16px !important;
+      width: 30px !important;
+      height: 30px !important;
+      cursor: pointer !important;
+      transition: all 0.2s ease !important;
+      opacity: 1 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      margin: 5px !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+
+      &:hover {
+        background: #66BB6A !important;
+        transform: scale(1.2) !important;
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.6) !important;
+      }
+
+      &.active {
+        background: #F44336 !important;
+        animation: pulse 1s infinite !important;
+      }
+    }
     border: 1px dashed rgba(255, 255, 255, 0.3);
 
     .empty-text {
@@ -139,10 +237,19 @@
       &:hover {
         background: rgba(255, 255, 255, 0.2);
         transform: scale(1.1);
+      }      &.active {
+        background: #FF5722;
       }
 
-      &.active {
-        background: #FF5722;
+      &.play-btn {
+        &:hover {
+          background: #4CAF50;
+        }
+        
+        &.active {
+          background: #4CAF50;
+          animation: pulse 1s infinite;
+        }
       }
 
       &.mute-btn.active {

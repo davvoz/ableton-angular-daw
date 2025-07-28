@@ -129,15 +129,76 @@ export class StateService {
       };
     });
   }
-
   updateTrack(id: string, updates: Partial<Track>): void {
+    console.log(`🔧 StateService.updateTrack called for ${id} with updates:`, updates);
+    
     this._state.update(state => {
       const track = state.tracks.get(id);
-      if (!track) return state;
+      if (!track) {
+        console.log(`❌ Track ${id} not found in state`);
+        return state;
+      }
+      
+      console.log(`📊 BEFORE UPDATE: Track ${track.name} - isMuted: ${track.isMuted}, isSolo: ${track.isSolo}`);
       
       const updatedTrack = { ...track, ...updates };
       const newTracks = new Map(state.tracks);
       newTracks.set(id, updatedTrack);
+      
+      console.log(`📊 AFTER UPDATE: Track ${updatedTrack.name} - isMuted: ${updatedTrack.isMuted}, isSolo: ${updatedTrack.isSolo}`);
+      
+      return {
+        ...state,
+        tracks: newTracks,
+        isDirty: true
+      };
+    });
+  }
+
+  // NUOVO: Gestione del Solo per le track
+  setSoloTrack(trackId: string): void {
+    this._state.update(state => {
+      const newTracks = new Map();
+      
+      // Itera su tutte le track
+      for (const [id, track] of state.tracks) {
+        if (id === trackId) {
+          // La track selezionata va in solo e non è mutata
+          newTracks.set(id, { 
+            ...track, 
+            isSolo: true, 
+            isMuted: false 
+          });
+        } else {
+          // Tutte le altre track vengono mutate e perdono il solo
+          newTracks.set(id, { 
+            ...track, 
+            isSolo: false, 
+            isMuted: true 
+          });
+        }
+      }
+      
+      return {
+        ...state,
+        tracks: newTracks,
+        isDirty: true
+      };
+    });
+  }
+
+  clearSolo(): void {
+    this._state.update(state => {
+      const newTracks = new Map();
+      
+      // Rimuove il solo da tutte le track e le smuta
+      for (const [id, track] of state.tracks) {
+        newTracks.set(id, { 
+          ...track, 
+          isSolo: false, 
+          isMuted: false 
+        });
+      }
       
       return {
         ...state,

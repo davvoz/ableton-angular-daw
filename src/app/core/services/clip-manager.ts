@@ -59,7 +59,7 @@ export class ClipManager {
       notes: new Map<string, MidiNote>(),
       noteOrder: [],
       isLoop: true,
-      isPlaying: false,
+      // isPlaying non è più nel modello, ora è nel PlaybackState
       isMuted: false,
       isSelected: false,
       color: color || this.generateClipColor(),

@@ -18,11 +18,9 @@ export interface Track {
   readonly volume: number;                  // OBBLIGATORIO: Volume (0.0-1.0)
   readonly pan: number;                     // OBBLIGATORIO: Pan (-1.0 to 1.0)
   readonly gain: number;                    // OBBLIGATORIO: Gain in dB (-60 to +20)
-  
-  // OBBLIGATORI: Stato
+    // OBBLIGATORI: Stato
   readonly isMuted: boolean;                // OBBLIGATORIO: Se la track è mutata
   readonly isSolo: boolean;                 // OBBLIGATORIO: Se la track è in solo
-  readonly isArmed: boolean;                // OBBLIGATORIO: Se la track è armata per recording
   readonly isSelected: boolean;             // OBBLIGATORIO: Se la track è selezionata
   readonly isFrozen: boolean;               // OBBLIGATORIO: Se la track è freezata
   

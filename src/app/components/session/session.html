@@ -56,8 +56,7 @@
           <div class="track-info">
             <div class="track-name" [title]="track.name">{{ track.name }}</div>
             <div class="track-type">{{ track.instrumentType || 'Track' }}</div>
-          </div>
-          <div class="track-controls">
+          </div>          <div class="track-controls">
             <button class="track-mute-btn" 
                     [class.active]="track.isMuted" 
                     (click)="toggleTrackMute(track.id); $event.stopPropagation()" 
@@ -66,10 +65,6 @@
                     [class.active]="track.isSolo" 
                     (click)="toggleTrackSolo(track.id); $event.stopPropagation()" 
                     title="Solo">S</button>
-            <button class="track-arm-btn" 
-                    [class.active]="track.isArmed" 
-                    (click)="toggleTrackArm(track.id); $event.stopPropagation()" 
-                    title="Arm for Recording">●</button>
           </div>
         </div>
       }
@@ -96,13 +91,17 @@
                  [class.empty]="!getClipAt(track.id, sceneIndex)"
                  (click)="onClipSlotClick(track.id, sceneIndex, $event)"
                  (dblclick)="onClipSlotDoubleClick(track.id, sceneIndex)"
-                 [title]="!getClipAt(track.id, sceneIndex) ? 'Double-click to create clip' : ''">
-              @if (getClipAt(track.id, sceneIndex); as clip) {
+                 [title]="!getClipAt(track.id, sceneIndex) ? 'Double-click to create clip' : ''">              @if (getClipAt(track.id, sceneIndex); as clip) {
                 <div class="clip" 
                      [class.playing]="isClipPlaying(clip.id)"
                      [class.selected]="isClipSelected(clip.id)"
                      [style.background]="clip.color || track.color">
-                  {{ clip.name }}
+                  {{ clip.name }}                  <!-- 🎯 BOTTONE PLAY FINALMENTE NEL POSTO GIUSTO! -->
+                  <button 
+                    class="clip-play-button"
+                    (click)="playClip(clip.id); $event.stopPropagation()">
+                    {{ isClipPlaying(clip.id) ? '■' : '▶' }}
+                  </button>
                 </div>
               }
             </div>
